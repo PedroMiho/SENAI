@@ -1,0 +1,48 @@
+body {
+    margin: auto;
+    width: 50vw;
+    font-size: 20px;
+}
+
+h1 {
+    font-size: 2em;
+    text-align: center;
+}
+
+h2 {
+    font-size: 1.6em;
+}
+
+#titulo-destinos{
+    background-color: #ecf0f1;
+    color: #2c3e50;
+}
+
+.subtitulos-destinos {
+    background-color: #f9ebea;
+    color: #e74c3c;
+}
+
+
+#titulo-maravilhas, .subtitulos-maravilhas {
+    background-color: #e9f7ef;
+    color: #27ae60;
+}
+
+#titulo-vibrantes, .subtitulos-vibrantes {
+    background-color: #fff3e6;
+    color: #f39c12;
+}
+
+#titulo-experiencias, .subtitulos-experiencias{
+    background-color: #f5e6f5;
+    color: #8e44ad;
+}
+
+.paragrafo {
+    font-size: 1em;
+    text-align: justify;
+    line-height: 1.4;
+    color: #34495e;
+}
+

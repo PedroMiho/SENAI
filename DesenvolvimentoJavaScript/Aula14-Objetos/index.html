@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Produtos</title>
+</head>
+<body>
+  <h2>Produtos</h2>
+
+  <label for="filtro">Categoria:</label>
+  <select id="filtro">
+    <option value="Todas">Todas</option>
+    <option value="Eletrônico">Eletrônico</option>
+    <option value="Periférico">Periférico</option>
+    <option value="Processador">Processador</option>
+  </select>
+
+  <table border="1" cellpadding="5" id="tabela">
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Preço</th>
+        <th>Categoria</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const produtos = [
+      {tipo: "Notebook", preco: 5000, categoria: "Eletrônico"},
+      {tipo: "Teclado", preco: 200, categoria: "Periférico"},
+      {tipo: "Mouse", preco: 120, categoria: "Periférico"},
+      {tipo: "Computador", preco: 5000, categoria: "Eletrônico"},
+      {tipo: "Monitor", preco: 800, categoria: "Eletrônico"},
+      {tipo: "Microfone", preco: 300, categoria: "Periférico"},
+      {tipo: "Processador", preco: 3100, categoria: "Processador"},
+      {tipo: "Placa de Vídeo", preco: 2000, categoria: "Eletrônico"},
+      {tipo: "Mouse Pad", preco: 50, categoria: "Periférico"}
+    ];
+
+    const tabela = document.querySelector("#tabela tbody");
+    const filtro = document.getElementById("filtro");
+
+    function mostrarProdutos(categoria) {
+      tabela.innerHTML = "";
+      const lista = categoria === "Todas"
+        ? produtos
+        : produtos.filter(p => p.categoria === categoria);
+
+      lista.forEach(p => {
+        const linha = `<tr>
+          <td>${p.tipo}</td>
+          <td>R$ ${p.preco}</td>
+          <td>${p.categoria}</td>
+        </tr>`;
+        tabela.innerHTML += linha;
+      });
+    }
+
+    filtro.addEventListener("change", () => {
+      mostrarProdutos(filtro.value);
+    });
+
+    mostrarProdutos("Todas"); // mostra todos ao carregar
+  </script>
+</body>
+</html>

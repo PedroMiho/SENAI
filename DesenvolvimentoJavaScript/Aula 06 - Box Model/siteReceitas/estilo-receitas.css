@@ -1,0 +1,53 @@
+:root {
+    --cor-fundo-footer: #333;
+}
+
+
+main {
+    width: 50vw;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.171);
+    padding: 10px;
+}
+
+section {
+    margin: 20px;
+    text-align: left;
+}
+
+h2 {
+    text-align: left;
+}
+
+main > section > ul > li {
+    margin-top: 5px;
+    margin-left: 30px;
+}
+
+main > section > ol > li {
+    margin-top: 3px;
+    margin-left: 30px;
+}
+
+img {
+    max-width: 100%;
+    border-radius: 8px;
+    width: 200px;
+    height: 200px;
+}
+
+h3 {
+    margin-top: -10px;
+    margin-bottom: 10px;
+}
+
+footer {
+    text-align: center;
+    padding: 10px;
+    background-color: var(--cor-fundo-footer);
+    color: white;
+    margin-top: 20px;
+}
