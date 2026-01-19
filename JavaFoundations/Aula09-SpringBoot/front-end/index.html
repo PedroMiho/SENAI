@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Roupas - Completo com Dashboard Real</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        }
+        .sidebar .nav-link {
+            border-radius: 10px;
+            margin: 5px 15px;
+            transition: all 0.3s ease;
+        }
+        .sidebar .nav-link:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .sidebar .nav-link.active {
+            background: rgba(255,255,255,0.3);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .main-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        .content-area {
+            min-height: 70vh;
+        }
+        .fade-content {
+            transition: opacity 0.3s ease;
+        }
+        .stats-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .stats-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+        }
+    </style>
+</head>
+<body style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block sidebar">
+                <div class="position-sticky pt-3">
+                    <div class="text-center pb-4">
+                        <div class="bg-white rounded-circle mx-auto mb-3 p-3 shadow-lg" style="width: 80px; height: 80px;">
+                            <i class="bi bi-bag-heart-fill display-4 text-primary"></i>
+                        </div>
+                        <h5 class="text-white mb-1">Roupas Store</h5>
+                        <p class="text-white-50 mb-0 small">Sistema Completo</p>
+                    </div>
+
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active text-white" href="#" data-pagina="dashboard">
+                                <i class="bi bi-person-standing-dress me-3"></i>
+                                <span class="d-none d-sm-inline">Dashboard</span>
+                                <span id="badgeTotalRoupas" class="badge bg-light text-dark ms-1">0</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="#" data-pagina="cadastrar">
+                                <i class="bi bi-plus-circle-fill me-3"></i>
+                                <span class="d-none d-sm-inline">Cadastrar Roupa</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="#" data-pagina="consultar">
+                                <i class="bi bi-list-check me-3"></i>
+                                <span class="d-none d-sm-inline">Consultar Roupas</span>
+                            </a>
+                        </li>
+                        <li class="nav-item mt-auto">
+                            <a class="nav-link text-white-50" href="#">
+                                <i class="bi bi-box-arrow-right me-3"></i>
+                                Sair
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Conteúdo Principal -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                <div class="content-area">
+                    <div id="contentMain" class="main-card shadow-lg border-0 rounded-4 p-5 mb-5 fade-content">
+                        <!-- Conteúdo será injetado aqui -->
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Variáveis globais para cache dos dados
+        let dadosEstoque = {
+            totalRoupas: 0,
+            totalValor: 0,
+            totalQuantidade: 0,
+            atualizadoEm: null
+        };
+
+        // Função utilitária para formatar moeda
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor);
+        }
+
+        // Função para atualizar dashboard com dados reais
+        async function atualizarDashboard() {
+            try {
+                const resposta = await fetch('http://localhost:8080/roupas');
+                if (!resposta.ok) throw new Error('API indisponível');
+                
+                const produtos = await resposta.json();
+                
+                // Calcular totais reais
+                dadosEstoque.totalRoupas = produtos.length;
+                dadosEstoque.totalQuantidade = produtos.reduce((total, p) => total + p.quantidade, 0);
+                dadosEstoque.totalValor = produtos.reduce((total, p) => total + (p.quantidade * p.preco), 0);
+                dadosEstoque.atualizadoEm = new Date().toLocaleString('pt-BR');
+
+                // Atualizar badge no menu
+                document.getElementById('badgeTotalRoupas').textContent = dadosEstoque.totalRoupas;
+
+                // Atualizar cards do dashboard se estiver na página
+                atualizarCardsDashboard();
+
+                // Atualizar timestamp
+                const ultimaAtualizacao = document.getElementById('ultimaAtualizacao');
+                if (ultimaAtualizacao) {
+                    ultimaAtualizacao.textContent = dadosEstoque.atualizadoEm;
+                }
+
+            } catch (error) {
+                console.error('Erro ao atualizar dashboard:', error);
+            }
+        }
+
+        // Atualizar cards do dashboard com dados reais
+        function atualizarCardsDashboard() {
+            const cardTotalRoupas = document.getElementById('cardTotalRoupas');
+            const cardTotalValor = document.getElementById('cardTotalValor');
+            const cardTotalQuantidade = document.getElementById('cardTotalQuantidade');
+            
+            if (cardTotalRoupas) cardTotalRoupas.textContent = dadosEstoque.totalRoupas;
+            if (cardTotalValor) cardTotalValor.textContent = formatarMoeda(dadosEstoque.totalValor);
+            if (cardTotalQuantidade) cardTotalQuantidade.textContent = `${dadosEstoque.totalQuantidade} un`;
+        }
+
+        // Função utilitária para mostrar mensagens
+        function mostrarMensagem(texto, tipo = 'info', containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.innerHTML = `${texto}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+            container.className = `alert alert-${tipo} alert-dismissible fade show`;
+            container.classList.remove('d-none');
+        }
+
+        // Templates das páginas (SPA) - COMPLETOS
+        const TEMPLATES = {
+            dashboard: `
+                <div class="row align-items-center mb-4">
+                    <div class="col">
+                        <h1 class="display-5 fw-bold text-dark mb-1">
+                            <i class="bi bi-house-door-fill text-primary me-3"></i>
+                            Dashboard Principal
+                        </h1>
+                        <p class="text-muted mb-0">
+                            Última atualização: <span id="ultimaAtualizacao">-</span>
+                            <button class="btn btn-outline-primary btn-sm ms-3" onclick="atualizarDashboard()">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Atualizar Dados
+                            </button>
+                        </p>
+                    </div>
+                    <div class="col-auto">
+                        <div class="bg-primary text-white rounded-pill px-4 py-2 shadow-sm">
+                            <i class="bi bi-arrow-clockwise me-2"></i><small>Versão 1.0</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-5">
+                    <div class="col-md-3">
+                        <div class="card h-100 border-0 shadow-sm stats-card" onclick="navegar('consultar')">
+                            <div class="card-body text-center p-4">
+                                <i class="bi bi-person-standing-dress display-4 text-primary mb-3"></i>
+                                <h3 class="fw-bold text-primary" id="cardTotalRoupas">0</h3>
+                                <p class="text-muted mb-0">Roupas Cadastradas</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card h-100 border-0 shadow-sm stats-card">
+                            <div class="card-body text-center p-4">
+                                <i class="bi bi-currency-dollar display-4 text-success mb-3"></i>
+                                <h3 class="fw-bold text-success" id="cardTotalValor">R$ 0,00</h3>
+                                <p class="text-muted mb-0">Valor Total Estoque</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card h-100 border-0 shadow-sm stats-card">
+                            <div class="card-body text-center p-4">
+                                <i class="bi bi-box-seam display-4 text-warning mb-3"></i>
+                                <h3 class="fw-bold text-warning" id="cardTotalQuantidade">0 un</h3>
+                                <p class="text-muted mb-0">Total em Estoque</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card h-100 border-0 shadow-sm stats-card">
+                            <div class="card-body text-center p-4">
+                                <i class="bi bi-people display-4 text-info mb-3"></i>
+                                <h3 class="fw-bold text-info">1</h3>
+                                <p class="text-muted mb-0">Usuários Ativos</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-0 bg-primary text-white shadow-lg h-100 stats-card" onclick="navegar('cadastrar')">
+                            <div class="card-body p-4 text-center">
+                                <i class="bi bi-plus-circle-fill display-1 mb-3 opacity-75"></i>
+                                <h4 class="mb-2">Cadastrar Nova Roupa</h4>
+                                <p class="mb-3">Adicione produtos ao seu estoque rapidamente</p>
+                                <button class="btn btn-light btn-lg px-5" onclick="navegar('cadastrar')">
+                                    <i class="bi bi-arrow-right me-2"></i>Iniciar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-0 bg-success text-white shadow-lg h-100 stats-card" onclick="navegar('consultar')">
+                            <div class="card-body p-4 text-center">
+                                <i class="bi bi-list-nested display-1 mb-3 opacity-75"></i>
+                                <h4 class="mb-2">Consultar Estoque</h4>
+                                <p class="mb-3">Visualize todos os produtos cadastrados</p>
+                                <button class="btn btn-light btn-lg px-5" onclick="navegar('consultar')">
+                                    <i class="bi bi-arrow-right me-2"></i>Visualizar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+
+            cadastrar: `
+                <div class="row justify-content-center">
+                    <div class="col-12 col-md-10 col-lg-8">
+                        <div class="card shadow-lg border-0">
+                            <div class="card-header bg-primary text-white text-center py-4">
+                                <h2 class="mb-0"><i class="bi bi-plus-circle-fill me-2"></i>Cadastrar Roupa</h2>
+                                <p class="mb-0 opacity-75 mt-2">API REST Spring Boot + Fetch API</p>
+                            </div>
+                            <div class="card-body p-5">
+                                <div id="mensagemStatusCadastro" class="alert d-none mb-4" role="alert"></div>
+                                <form id="formRoupas" novalidate class="needs-validation">
+                                    <div class="row g-4">
+                                        <div class="col-12 col-md-6">
+                                            <label for="tipo" class="form-label"><i class="bi bi-tag text-primary me-1"></i>Tipo *</label>
+                                            <select class="form-select form-select-lg" id="tipo" required>
+                                                <option value="">Selecione o tipo...</option>
+                                                <option value="Camisa">Camisa</option>
+                                                <option value="Blusa">Blusa</option>
+                                                <option value="Suéter">Suéter</option>
+                                                <option value="Calça">Calça</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="quantidade" class="form-label"><i class="bi bi-box-seam text-primary me-1"></i>Quantidade *</label>
+                                            <input type="number" class="form-control form-control-lg" id="quantidade" min="1" required placeholder="0">
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="preco" class="form-label"><i class="bi bi-currency-dollar text-primary me-1"></i>Preço (R$) *</label>
+                                            <input type="number" class="form-control form-control-lg" id="preco" step="0.01" min="0.01" required placeholder="0.00">
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label for="tamanho" class="form-label"><i class="bi bi-rulers text-primary me-1"></i>Tamanho *</label>
+                                            <select class="form-select form-select-lg" id="tamanho" required>
+                                                <option value="">Selecione o tamanho...</option>
+                                                <option value="PP">PP</option><option value="P">P</option>
+                                                <option value="M">M</option><option value="G">G</option>
+                                                <option value="GG">GG</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="marca" class="form-label"><i class="bi bi-building text-primary me-1"></i>Marca *</label>
+                                             <select class="form-select form-select-lg" id="marca" required>
+                                                <option value="">Selecione a marca...</option>
+                                                <option value="Nike">Nike</option>
+                                                <option value="Adidas">Adidas</option>
+                                                <option value="Puma">Puma</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="text-center mt-5">
+                                        <button type="submit" class="btn btn-primary btn-lg px-5 py-3 shadow-sm me-3">
+                                            <i class="bi bi-send-fill me-2"></i>Cadastrar Roupa
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-lg px-5 py-3" onclick="navegar('dashboard')">
+                                            <i class="bi bi-arrow-left me-2"></i>Voltar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+
+            consultar: `
+                <div class="row justify-content-center">
+                    <div class="col-12 col-md-11 col-lg-10">
+                        <div class="card shadow-lg border-0">
+                            <div class="card-header bg-success text-white text-center py-4 d-flex justify-content-between align-items-center">
+                                <h2 class="mb-0"><i class="bi bi-list-check me-2"></i>Consultar Roupas</h2>
+                                <button id="btnConsultar" class="btn btn-light btn-lg px-4">
+                                    <i class="bi bi-arrow-clockwise me-2"></i>Atualizar
+                                </button>
+                            </div>
+                            <div class="card-body p-5">
+                                <div id="mensagemStatus" class="alert d-none mb-4" role="alert"></div>
+                                <div class="table-responsive">
+                                    <table id="tabelaRoupas" class="table table-hover table-striped align-middle">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>#</th><th>Tipo</th><th>Marca</th><th>Tamanho</th>
+                                                <th class="text-center">Qtd</th><th class="text-end">Preço</th><th class="text-end">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tabelaBody">
+                                            <tr><td colspan="7" class="text-center py-5">
+                                                <i class="bi bi-arrow-clockwise display-4 text-muted mb-3"></i>
+                                                <p class="text-muted">Clique em "Atualizar" para carregar os produtos</p>
+                                            </td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="text-center mt-4">
+                                    <button class="btn btn-outline-success btn-lg me-3" onclick="navegar('dashboard')">
+                                        <i class="bi bi-arrow-left me-2"></i>Voltar ao Dashboard
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        // Função global de navegação
+        function navegar(pagina) {
+            document.querySelector(`[data-pagina="${pagina}"]`).click();
+        }
+
+        // Função para trocar conteúdo
+        function trocarConteudo(pagina) {
+            const contentMain = document.getElementById('contentMain');
+            contentMain.style.opacity = '0';
+            setTimeout(() => {
+                contentMain.innerHTML = TEMPLATES[pagina];
+                contentMain.style.opacity = '1';
+                if (pagina === 'cadastrar') initCadastro();
+                if (pagina === 'consultar') initConsulta();
+                if (pagina === 'dashboard') atualizarCardsDashboard();
+            }, 200);
+        }
+
+        // Inicializar página de cadastro - POST
+        function initCadastro() {
+            const form = document.getElementById('formRoupas');
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                if (!form.checkValidity()) return form.reportValidity();
+
+                const dadosRoupas = {
+                    tipo: document.getElementById('tipo').value,
+                    quantidade: parseInt(document.getElementById('quantidade').value),
+                    preco: parseFloat(document.getElementById('preco').value),
+                    tamanho: document.getElementById('tamanho').value,
+                    marca: document.getElementById('marca').value.trim()
+                };
+
+                const botao = form.querySelector('button[type="submit"]');
+                try {
+                    botao.disabled = true;
+                    botao.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Cadastrando...';
+
+                    const resposta = await fetch('http://localhost:8080/roupas', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(dadosRoupas)
+                    });
+
+                    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+                    mostrarMensagem('✅ Roupa cadastrada com sucesso!', 'success', 'mensagemStatusCadastro');
+                    form.reset();
+                    atualizarDashboard(); // Atualiza dashboard após cadastro
+
+                } catch (error) {
+                    mostrarMensagem(`❌ Erro: ${error.message}`, 'danger', 'mensagemStatusCadastro');
+                } finally {
+                    botao.disabled = false;
+                    botao.innerHTML = '<i class="bi bi-send-fill me-2"></i>Cadastrar Roupa';
+                }
+            });
+        }
+
+        // Inicializar página de consulta - GET
+        function initConsulta() {
+            const btnConsultar = document.getElementById('btnConsultar');
+            btnConsultar.addEventListener('click', async function() {
+                const tabelaBody = document.getElementById('tabelaBody');
+                try {
+                    btnConsultar.disabled = true;
+                    btnConsultar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Carregando...';
+                    mostrarMensagem('Consultando produtos...', 'info', 'mensagemStatus');
+
+                    const resposta = await fetch('http://localhost:8080/roupas');
+                    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+                    
+                    const produtos = await resposta.json();
+                    if (produtos.length === 0) {
+                        tabelaBody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-inbox display-4 mb-3"></i><h5>Nenhum produto</h5></td></tr>';
+                        return mostrarMensagem('Nenhum produto encontrado', 'warning', 'mensagemStatus');
+                    }
+
+                    let totalGeral = 0;
+                    tabelaBody.innerHTML = produtos.map(produto => {
+                        const valorTotal = produto.quantidade * produto.preco;
+                        totalGeral += valorTotal;
+                        return `
+                            <tr>
+                                <th>${produto.id}</th>
+                                <td><span class="badge bg-primary">${produto.tipo}</span></td>
+                                <td><i class="bi bi-building text-muted me-1"></i>${produto.marca}</td>
+                                <td><span class="badge bg-secondary">${produto.tamanho}</span></td>
+                                <td class="text-center fw-bold">${produto.quantidade.toLocaleString()}</td>
+                                <td class="text-end fw-semibold text-success">${formatarMoeda(produto.preco)}</td>
+                                <td class="text-end fs-5 fw-bold text-primary">${formatarMoeda(valorTotal)}</td>
+                            </tr>`;
+                    }).join('');
+                    mostrarMensagem(`${produtos.length} produtos! Total: ${formatarMoeda(totalGeral)}`, 'success', 'mensagemStatus');
+                    atualizarDashboard(); // Sincroniza dashboard
+
+                } catch (error) {
+                    document.getElementById('tabelaBody').innerHTML = '<tr><td colspan="7" class="text-center py-5 text-danger"><i class="bi bi-exclamation-triangle display-4 mb-3"></i><h5>Erro</h5><p>Verifique a API em localhost:8080</p></td></tr>';
+                    mostrarMensagem(`Erro: ${error.message}`, 'danger', 'mensagemStatus');
+                } finally {
+                    btnConsultar.disabled = false;
+                    btnConsultar.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Atualizar';
+                }
+            });
+        }
+
+        // Event listeners da navegação
+        document.querySelectorAll('[data-pagina]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                trocarConteudo(this.getAttribute('data-pagina'));
+            });
+        });
+
+        // Hover effects nos cards
+        document.addEventListener('mouseenter', e => {
+            if (e.target.closest('.stats-card')) e.target.closest('.stats-card').style.transform = 'translateY(-5px)';
+        }, true);
+        document.addEventListener('mouseleave', e => {
+            if (e.target.closest('.stats-card')) e.target.closest('.stats-card').style.transform = 'translateY(0)';
+        }, true);
+
+        // Inicialização
+        atualizarDashboard();
+        trocarConteudo('dashboard');
+    </script>
+</body>
+</html>
