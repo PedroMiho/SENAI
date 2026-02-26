@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Detecção de EPI</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container-box {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    width: 700px;
+    text-align: center;
+}
+
+video {
+    border-radius: 10px;
+    width: 100%;
+}
+
+.status-ok {
+    color: green;
+    font-weight: bold;
+}
+
+.status-error {
+    color: red;
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container-box">
+    <h3 class="mb-3">Verificação de EPI</h3>
+    
+    <video id="video" autoplay></video>
+    
+    <button class="btn btn-primary mt-3" onclick="analisar()">Verificar EPI</button>
+    
+    <div id="resultado" class="mt-4"></div>
+</div>
+
+<script>
+
+const endpoint = "SEU_ENDPOINT";
+const projectId = "SEU_PROJECT_ID";
+const iterationName = "SUA_ITERACAO";
+const predictionKey = "SUA_PREDICTION_KEY";
+
+const video = document.getElementById("video");
+
+// Ativar câmera
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => {
+    video.srcObject = stream;
+})
+.catch(err => {
+    alert("Erro ao acessar câmera: " + err);
+});
+
+async function analisar() {
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0);
+
+    const blob = await new Promise(resolve =>
+        canvas.toBlob(resolve, "image/jpeg")
+    );
+
+    const response = await fetch(
+        `${endpoint}/customvision/v3.0/Prediction/${projectId}/detect/iterations/${iterationName}/image`,
+        {
+            method: "POST",
+            headers: {
+                "Prediction-Key": predictionKey,
+                "Content-Type": "application/octet-stream"
+            },
+            body: blob
+        }
+    );
+
+    const data = await response.json();
+
+    mostrarResultado(data.predictions);
+}
+
+function mostrarResultado(predictions) {
+
+    let capacete = false;
+    let oculos = false;
+    let auricular = false;
+
+    predictions.forEach(p => {
+        if (p.probability > 0.7) {
+            if (p.tagName === "capacete") capacete = true;
+            if (p.tagName === "oculos") oculos = true;
+            if (p.tagName === "protetor") auricular = true;
+        }
+    });
+
+    document.getElementById("resultado").innerHTML = `
+        <p class="${capacete ? 'status-ok' : 'status-error'}">
+        Capacete: ${capacete ? 'OK' : 'NÃO DETECTADO'}
+        </p>
+
+        <p class="${oculos ? 'status-ok' : 'status-error'}">
+        Óculos: ${oculos ? 'OK' : 'NÃO DETECTADO'}
+        </p>
+
+        <p class="${auricular ? 'status-ok' : 'status-error'}">
+        Protetor Auricular: ${auricular ? 'OK' : 'NÃO DETECTADO'}
+        </p>
+    `;
+}
+
+</script>
+
+</body>
+</html>
