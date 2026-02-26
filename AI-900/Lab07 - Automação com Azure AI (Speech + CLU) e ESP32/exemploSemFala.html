@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle ESP32 com Azure CLU</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .container-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 550px;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .intent {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+
+        .score {
+            font-size: 1.2rem;
+            color: #198754;
+        }
+
+        .status {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-card">
+        <h3 class="text-center mb-4">Controle de LED com CLU + ESP32</h3>
+        <div class="mb-3"> <input type="text" id="texto" class="form-control" placeholder="Ex: acender o led"> </div>
+        <div class="d-grid mb-4"> <button class="btn btn-primary btn-lg" onclick="analisar()">Enviar Comando</button>
+        </div>
+        <div class="result-box">
+            <p>Intenção detectada:</p>
+            <div id="intent" class="intent">---</div>
+            <p class="mt-2">Confiança:</p>
+            <div id="score" class="score">---</div>
+            <p class="mt-3">Status do LED:</p>
+            <div id="statusLED" class="status text-secondary">Aguardando...</div>
+        </div>
+    </div>
+    <script> // ===== CONFIGURAÇÕES ===== const endpoint = "https://pedromihosenaimogilin.cognitiveservices.azure.com"; const apiKey = "9Bavx4CNLqDYOgytXdp83f1A1ILWshyIb2UGgW5wwlR5egK9K7KfJQQJ99CBACLArgHXJ3w3AAAaACOGT1me"; const projectName = "pedromihoteste"; const deploymentName = "testepedro"; // IP do ESP32 na rede local const esp32IP = "192.168.15.16"; // ========================== async function analisar() { const texto = document.getElementById("texto").value; if (!texto) { alert("Digite um comando"); return; } const url = endpoint + "/language/:analyze-conversations?api-version=2024-11-15-preview"; const body = { kind: "Conversation", analysisInput: { conversationItem: { id: "1", text: texto, modality: "text", language: "pt-br", participantId: "user" } }, parameters: { projectName: projectName, deploymentName: deploymentName, stringIndexType: "TextElement_V8" } }; document.getElementById("statusLED").innerText = "Processando..."; document.getElementById("statusLED").className = "status text-warning"; try { const response = await fetch(url, { method: "POST", headers: { "Ocp-Apim-Subscription-Key": apiKey, "Content-Type": "application/json" }, body: JSON.stringify(body) }); const data = await response.json(); if (data.error) { alert(data.error.message); console.log(data); return; } // ===== MAIOR PROBABILIDADE ===== const intent = data.result.prediction.topIntent; const score = data.result.prediction.intents[intent].confidenceScore; document.getElementById("intent").innerText = intent; document.getElementById("score").innerText = (score * 100).toFixed(2) + "%"; // ===== ENVIO PARA O ESP32 ===== if(score > 0.7) { if(intent === "LigarDispositivo") { await fetch(http://${esp32IP}/?action=ligar); document.getElementById("statusLED").innerText = "LED LIGADO"; document.getElementById("statusLED").className = "status text-success"; } else if(intent === "DesligarDispositivo") { await fetch(http://${esp32IP}/?action=desligar); document.getElementById("statusLED").innerText = "LED DESLIGADO"; document.getElementById("statusLED").className = "status text-danger"; } else { document.getElementById("statusLED").innerText = "Nenhuma ação configurada"; document.getElementById("statusLED").className = "status text-secondary"; } } else { document.getElementById("statusLED").innerText = "Confiança baixa - comando ignorado"; document.getElementById("statusLED").className = "status text-secondary"; } } catch (error) { document.getElementById("statusLED").innerText = "Erro ao comunicar com CLU ou ESP32"; document.getElementById("statusLED").className = "status text-danger"; console.error(error); } } </script>
+</body>
+
+</html>
