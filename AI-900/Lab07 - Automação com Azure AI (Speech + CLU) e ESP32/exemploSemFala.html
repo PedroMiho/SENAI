@@ -70,16 +70,22 @@
         const apiKey = "";
         const projectName = "pedromihoteste"; 
         const deploymentName = "testepedro";
+
         // IP do ESP32 na rede local 
         const esp32IP = "192.168.15.16"; 
-         async function analisar() { 
+
+        async function analisar() { 
+        
             const texto = document.getElementById("texto").value; 
+        
             if (!texto) { 
-                alert("Digite um comando"); return; 
+                alert("Digite um comando"); 
+                return; 
             } 
             
             const url = endpoint + "/language/:analyze-conversations?api-version=2024-11-15-preview"; 
             const body = { 
+                
                 kind: "Conversation", analysisInput: { 
                     conversationItem: { 
                         id: "1", text: texto, modality: "text", language: "pt-br", participantId: "user" 
@@ -89,37 +95,51 @@
                 } 
             }; 
             
-            document.getElementById("statusLED").innerText = "Processando..."; document.getElementById("statusLED").className = "status text-warning"; 
+            document.getElementById("statusLED").innerText = "Processando..."; 
+            document.getElementById("statusLED").className = "status text-warning"; 
             
             try { 
                 const response = await fetch(url, { 
-                    method: "POST", headers: { 
-                        "Ocp-Apim-Subscription-Key": apiKey, "Content-Type": "application/json" 
-                    }, body: JSON.stringify(body) 
+                    method: "POST", 
+                    headers: { 
+                        "Ocp-Apim-Subscription-Key": apiKey, 
+                        "Content-Type": "application/json" 
+                    }, 
+                    body: JSON.stringify(body) 
                 }); 
-                const data = await response.json(); if (data.error) { 
-                    alert(data.error.message); console.log(data); return; 
+
+                const data = await response.json(); 
+            
+                if (data.error) { 
+                    alert(data.error.message); 
+                    console.log(data); 
+                    return; 
                 } 
          
                 const intent = data.result.prediction.topIntent; 
                 const score = data.result.prediction.intents[intent].confidenceScore; 
-                document.getElementById("intent").innerText = intent; document.getElementById("score").innerText = (score * 100).toFixed(2) + "%"; 
+                document.getElementById("intent").innerText = intent; 
+                document.getElementById("score").innerText = (score * 100).toFixed(2) + "%"; 
                 
                 // ===== ENVIO PARA O ESP32 ===== 
                 
                 if(score > 0.7) { 
+
                     if(intent === "LigarDispositivo") { 
                         await fetch(`http://${esp32IP}/?action=ligar`); 
                         document.getElementById("statusLED").innerText = "LED LIGADO"; 
                         document.getElementById("statusLED").className = "status text-success"; 
+
                     } else if(intent === "DesligarDispositivo") { 
                         await fetch(`http://${esp32IP}/?action=desligar`); 
                         document.getElementById("statusLED").innerText = "LED DESLIGADO"; 
                         document.getElementById("statusLED").className = "status text-danger"; 
+
                     } else { 
                         document.getElementById("statusLED").innerText = "Nenhuma ação configurada"; 
                         document.getElementById("statusLED").className = "status text-secondary"; 
                     } 
+
                 } else { 
                     document.getElementById("statusLED").innerText = "Confiança baixa - comando ignorado"; 
                     document.getElementById("statusLED").className = "status text-secondary"; 
