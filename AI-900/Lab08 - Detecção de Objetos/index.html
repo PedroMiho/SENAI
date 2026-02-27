@@ -55,10 +55,10 @@ video {
 
 <script>
 
-const endpoint = "SEU_ENDPOINT";
-const projectId = "SEU_PROJECT_ID";
-const iterationName = "SUA_ITERACAO";
-const predictionKey = "SUA_PREDICTION_KEY";
+const endpoint = "https://pedromihodeteccaoobjetos-prediction.cognitiveservices.azure.com/";
+const projectId = "b50e9b17-72e0-4792-863e-350e3c7d23da";
+const iterationName = "Iteration1";
+const predictionKey = "6ce1tXaCbgXp4Y2urt106RmkYxHjkTQnCQjebRqrgabah3ELDXXGJQQJ99CBACHrzpqXJ3w3AAAIACOGwTD3";
 
 const video = document.getElementById("video");
 
@@ -108,7 +108,7 @@ function mostrarResultado(predictions) {
     let auricular = false;
 
     predictions.forEach(p => {
-        if (p.probability > 0.7) {
+        if (p.probability > 0.3) {
             if (p.tagName === "capacete") capacete = true;
             if (p.tagName === "oculos") oculos = true;
             if (p.tagName === "protetor") auricular = true;
