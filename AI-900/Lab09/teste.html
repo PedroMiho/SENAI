@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classificação com ESP32</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container-box {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    width: 750px;
+    text-align: center;
+}
+
+video {
+    border-radius: 10px;
+    width: 100%;
+}
+
+.ok { color: green; font-weight: bold; }
+.alerta { color: red; font-weight: bold; }
+</style>
+</head>
+
+<body>
+
+<div class="container-box">
+    <h4 class="mb-3">🔎 Classificação + ESP32</h4>
+    <video id="video" autoplay></video>
+    <div id="resultado" class="mt-4"></div>
+</div>
+
+<script>
+
+// ===============================
+// CONFIGURAÇÕES CORRETAS
+// ===============================
+
+const endpoint = "https://pedromihodeteccaoobjetos-prediction.cognitiveservices.azure.com";
+const projectId = "2f92f709-cebb-4120-ab42-eae0b521d8ef";
+const iterationName = "Iteration1";
+const predictionKey = "6ce1tXaCbgXp4Y2urt106RmkYxHjkTQnCQjebRqrgabah3ELDXXGJQQJ99CBACHrzpqXJ3w3AAAIACOGwTD3";
+
+const espIP = "172.20.10.2";
+
+let ultimaCorEnviada = "";
+
+// ===============================
+
+const video = document.getElementById("video");
+
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => video.srcObject = stream)
+.catch(() => {
+    document.getElementById("resultado").innerHTML =
+        `<p class="alerta">Erro ao acessar câmera</p>`;
+});
+
+video.addEventListener("loadedmetadata", () => {
+    setInterval(analisar, 3000);
+});
+
+async function analisar() {
+
+    if (video.videoWidth === 0) return;
+
+    try {
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0);
+
+        const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => {
+                if (!blob || blob.size === 0) reject("Imagem vazia");
+                else resolve(blob);
+            }, "image/jpeg", 0.9);
+        });
+
+        const url = `${endpoint}/customvision/v3.0/Prediction/${projectId}/classify/iterations/${iterationName}/image`;
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Prediction-Key": predictionKey,
+                "Content-Type": "application/octet-stream"
+            },
+            body: blob
+        });
+
+        if (!response.ok) throw new Error("Erro HTTP " + response.status);
+
+        const data = await response.json();
+
+        if (!data.predictions || data.predictions.length === 0) return;
+
+        processarResultado(data.predictions);
+
+    } catch (error) {
+        console.error("Erro na classificação:", error);
+    }
+}
+
+function processarResultado(predictions) {
+
+    const threshold = 0.80;
+    const melhor = predictions[0];
+
+    const tag = melhor.tagName;
+    const confianca = (melhor.probability * 100).toFixed(2);
+
+    console.log("Detectado:", tag, confianca + "%");
+
+    document.getElementById("resultado").innerHTML = `
+        <p class="${melhor.probability >= threshold ? 'ok' : 'alerta'}">
+        📦 Objeto: <strong>${tag}</strong>
+        </p>
+        <p>🎯 Confiança: <strong>${confianca}%</strong></p>
+    `;
+
+    if (melhor.probability >= threshold) {
+        enviarParaESP(tag);
+    }
+}
+
+function enviarParaESP(tag) {
+
+    let cor = "";
+
+    if (tag === "Lata") cor = "amarelo";
+    else if (tag === "Garrafa") cor = "vermelho";
+    else if (tag === "Copo") cor = "verde";
+
+    if (!cor) return;
+
+    if (cor === ultimaCorEnviada) return;
+
+    ultimaCorEnviada = cor;
+
+    console.log("Enviando para ESP:", cor);
+
+    fetch(`http://${espIP}/cor?valor=${cor}`)
+        .then(res => res.text())
+        .then(data => console.log("ESP respondeu:", data))
+        .catch(err => console.log("Erro ao enviar para ESP:", err));
+}
+
+</script>
+
+</body>
+</html>
