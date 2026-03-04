@@ -7,9 +7,9 @@ const char* password = "12348765";
 WebServer server(80);
 
 // Pinos dos LEDs
-int ledAmarelo = 14;
-int ledVermelho = 27;
-int ledVerde = 26;
+int ledAmarelo = 2;
+int ledVermelho = 4;
+int ledVerde = 5;
 
 // =========================
 // Função que recebe a cor
@@ -68,7 +68,7 @@ void setup() {
   Serial.println("\nWiFi conectado!");
   Serial.print("IP do ESP32: ");
   Serial.println(WiFi.localIP());
-
+  
   server.on("/cor", handleCor);
   server.begin();
 }
@@ -77,4 +77,5 @@ void setup() {
 // =========================
 void loop() {
   server.handleClient();
+  Serial.println(WiFi.localIP());
 }
