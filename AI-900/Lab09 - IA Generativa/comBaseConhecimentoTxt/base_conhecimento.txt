@@ -1,0 +1,65 @@
+Manual Corporativo - TechSolutions
+
+Sobre a Empresa
+
+A TechSolutions é uma empresa fictícia criada para fins educacionais em
+laboratórios de Inteligência Artificial. A empresa atua na área de
+tecnologia da informação e transformação digital.
+
+Missão
+
+Ajudar empresas e profissionais a utilizarem tecnologia e inteligência
+artificial para melhorar processos e aumentar produtividade.
+
+Visão
+
+Ser referência em inovação tecnológica e soluções de inteligência
+artificial na América Latina.
+
+Valores
+
+-   Inovação
+-   Ética no uso da tecnologia
+-   Compartilhamento de conhecimento
+-   Foco no cliente
+
+Horário de Funcionamento
+
+Segunda a sexta-feira das 08:00 às 18:00.
+
+Contato
+
+Email: suporte@techsolutions.com
+Telefone: (11) 4000-1234
+Site: www.techsolutions.com
+
+Serviços Oferecidos
+
+-   Consultoria em Computação em Nuvem
+-   Desenvolvimento de Aplicações Web
+-   Implementação de Inteligência Artificial
+-   Treinamentos em Tecnologia
+-   Análise de Dados e Business Intelligence
+
+Perguntas Frequentes
+
+Como solicitar suporte técnico?
+
+O suporte pode ser solicitado através do email suporte@techsolutions.com
+ou pelo telefone (11) 4000-1234.
+
+Quais tecnologias a empresa utiliza?
+
+A empresa trabalha com tecnologias modernas como: - Microsoft Azure -
+AWS - Google Cloud - Inteligência Artificial - Desenvolvimento Web
+
+A empresa oferece treinamentos?
+
+Sim. A TechSolutions oferece treinamentos nas áreas de: - Computação em
+nuvem - Desenvolvimento de software - Inteligência artificial - Análise
+de dados
+
+Política de Uso de Inteligência Artificial
+
+A empresa incentiva o uso responsável da IA, sempre respeitando
+princípios éticos, privacidade de dados e transparência.

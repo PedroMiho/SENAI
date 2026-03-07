@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Assistente Inteligente Corporativo</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+
+body{
+background:#f1f5f9;
+font-family:Segoe UI;
+}
+
+.navbar{
+background:#0f172a;
+}
+
+.chat-container{
+height:450px;
+overflow-y:auto;
+background:white;
+border-radius:10px;
+padding:20px;
+border:1px solid #e2e8f0;
+}
+
+.msg-user{
+text-align:right;
+margin-bottom:15px;
+}
+
+.msg-user span{
+background:#2563eb;
+color:white;
+padding:10px 15px;
+border-radius:20px;
+display:inline-block;
+}
+
+.msg-ai{
+text-align:left;
+margin-bottom:15px;
+}
+
+.msg-ai span{
+background:#e2e8f0;
+padding:10px 15px;
+border-radius:20px;
+display:inline-block;
+}
+
+.loading{
+font-style:italic;
+color:#64748b;
+}
+
+.footer{
+text-align:center;
+margin-top:20px;
+color:#64748b;
+font-size:14px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark">
+<div class="container">
+
+<span class="navbar-brand">
+🤖 Assistente Corporativo IA
+</span>
+
+</div>
+</nav>
+
+<div class="container mt-5">
+
+<div class="row justify-content-center">
+
+<div class="col-lg-8">
+
+<div class="card shadow">
+
+<div class="card-header bg-white">
+
+<h5 class="mb-0">
+Assistente Inteligente
+</h5>
+
+</div>
+
+<div class="card-body">
+
+<div id="chat" class="chat-container mb-3"></div>
+
+<div class="input-group">
+
+<input
+type="text"
+id="pergunta"
+class="form-control"
+placeholder="Digite sua pergunta..."
+>
+
+<button
+class="btn btn-primary"
+onclick="perguntar()"
+>
+Enviar
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="footer">
+Sistema demonstrativo de IA Generativa
+</div>
+
+</div>
+
+<script>
+
+const endpoint = "https://teste2334343.cognitiveservices.azure.com";
+const apiKey = "ELxKe5am3VT6pbKQoT0WfRyeE78Cd2qzvDPfxl0fBOmHNbXEqnMGJQQJ99CCACHrzpqXJ3w3AAAAACOG484U";
+const deployment = "gpt-5-nano";
+const apiVersion = "2024-12-01-preview";
+
+const chat = document.getElementById("chat");
+
+async function perguntar(){
+
+const perguntaInput = document.getElementById("pergunta");
+const pergunta = perguntaInput.value;
+
+if(!pergunta) return;
+
+chat.innerHTML += `
+<div class="msg-user">
+<span>${pergunta}</span>
+</div>
+`;
+
+perguntaInput.value="";
+
+const loading = document.createElement("div");
+loading.className="msg-ai";
+loading.innerHTML=`<span class="loading">IA está analisando...</span>`;
+chat.appendChild(loading);
+
+chat.scrollTop = chat.scrollHeight;
+
+const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+
+try{
+
+const resposta = await fetch(url,{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"api-key": apiKey
+},
+body: JSON.stringify({
+
+messages:[
+{
+role:"system",
+content:"Você é um assistente corporativo que responde dúvidas de tecnologia de forma clara."
+},
+{
+role:"user",
+content: pergunta
+}
+],
+
+max_completion_tokens:800
+
+})
+});
+
+const dados = await resposta.json();
+
+loading.remove();
+
+chat.innerHTML += `
+<div class="msg-ai">
+<span>${dados.choices[0].message.content}</span>
+</div>
+`;
+
+chat.scrollTop = chat.scrollHeight;
+
+}catch(erro){
+
+loading.remove();
+
+chat.innerHTML += `
+<div class="msg-ai">
+<span>Erro ao consultar IA</span>
+</div>
+`;
+
+}
+
+}
+
+document.getElementById("pergunta")
+.addEventListener("keypress",function(e){
+
+if(e.key==="Enter"){
+perguntar();
+}
+
+});
+
+</script>
+
+</body>
+
+</html>

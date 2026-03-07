@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Assistente IA - Base PDF</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<style>
+
+body{
+background:#f4f6f9;
+}
+
+.chat-box{
+height:400px;
+overflow-y:auto;
+background:white;
+border:1px solid #ddd;
+border-radius:10px;
+padding:20px;
+}
+
+.user{
+text-align:right;
+margin-bottom:15px;
+}
+
+.user span{
+background:#0d6efd;
+color:white;
+padding:10px 15px;
+border-radius:20px;
+}
+
+.ai{
+text-align:left;
+margin-bottom:15px;
+}
+
+.ai span{
+background:#e9ecef;
+padding:10px 15px;
+border-radius:20px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark bg-dark">
+<div class="container">
+<span class="navbar-brand">Assistente Corporativo</span>
+</div>
+</nav>
+
+<div class="container mt-5">
+
+<div class="row justify-content-center">
+
+<div class="col-lg-8">
+
+<div class="card shadow">
+
+<div class="card-header">
+Base de conhecimento (PDF)
+</div>
+
+<div class="card-body">
+
+<div id="chat" class="chat-box mb-3"></div>
+
+<div class="input-group">
+
+<input
+type="text"
+id="pergunta"
+class="form-control"
+placeholder="Digite sua pergunta..."
+>
+
+<button class="btn btn-primary" onclick="perguntar()">
+Enviar
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const endpoint = "https://teste2334343.cognitiveservices.azure.com";
+const apiKey = "ELxKe5am3VT6pbKQoT0WfRyeE78Cd2qzvDPfxl0fBOmHNbXEqnMGJQQJ99CCACHrzpqXJ3w3AAAAACOG484U";
+const deployment = "gpt-5-nano";
+const apiVersion = "2024-12-01-preview";
+
+let contextoPDF = "";
+
+/* Ler PDF */
+
+async function carregarPDF(){
+
+const pdf = await pdfjsLib.getDocument("manual.pdf").promise;
+
+for(let i=1;i<=pdf.numPages;i++){
+
+const page = await pdf.getPage(i);
+
+const content = await page.getTextContent();
+
+const texto = content.items.map(item => item.str).join(" ");
+
+contextoPDF += texto + "\n";
+
+}
+
+}
+
+carregarPDF();
+
+async function perguntar(){
+
+const pergunta = document.getElementById("pergunta").value;
+const chat = document.getElementById("chat");
+
+chat.innerHTML += `
+<div class="user">
+<span>${pergunta}</span>
+</div>
+`;
+
+document.getElementById("pergunta").value="";
+
+const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+
+const resposta = await fetch(url,{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json",
+"api-key":apiKey
+},
+
+body: JSON.stringify({
+
+messages:[
+{
+role:"system",
+content:`Responda usando apenas as informações abaixo:
+
+${contextoPDF}`
+},
+{
+role:"user",
+content: pergunta
+}
+],
+
+max_completion_tokens:800
+
+})
+
+});
+
+const dados = await resposta.json();
+
+chat.innerHTML += `
+<div class="ai">
+<span>${dados.choices[0].message.content}</span>
+</div>
+`;
+
+chat.scrollTop = chat.scrollHeight;
+
+}
+
+</script>
+
+</body>
+</html>
