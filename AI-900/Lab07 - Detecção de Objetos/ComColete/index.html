@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoramento de EPI</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+
+body{
+background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+.container-box{
+background:white;
+padding:30px;
+border-radius:15px;
+box-shadow:0 15px 40px rgba(0,0,0,0.3);
+width:750px;
+text-align:center;
+}
+
+.video-wrapper{
+position:relative;
+}
+
+video{
+border-radius:10px;
+width:100%;
+}
+
+canvas{
+position:absolute;
+top:0;
+left:0;
+}
+
+.ok{
+color:green;
+font-weight:bold;
+}
+
+.alerta{
+color:red;
+font-weight:bold;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container-box">
+
+<h4 class="mb-3">🛡 Monitoramento Automático de EPI</h4>
+
+<div class="video-wrapper">
+
+<video id="video" autoplay></video>
+<canvas id="overlay"></canvas>
+
+</div>
+
+<div id="status" class="mt-3"></div>
+<div id="resultado" class="mt-3"></div>
+
+</div>
+
+<script>
+
+// ===============================
+// CONFIGURAÇÕES AZURE
+// ===============================
+
+const endpoint = "https://tercioduarte-prediction.cognitiveservices.azure.com";
+const projectId = "0bc9c2c7-e907-41b8-83fd-529769eef84f";
+const iterationName = "Iteration1";
+const predictionKey = "4aVLefcrpVvoPlXEslTLRzHnnLtf4jL58infJ2SFcrQyBwKl4PySJQQJ99CCACYeBjFXJ3w3AAAIACOG3jzy";
+// ===============================
+
+const video = document.getElementById("video");
+const overlay = document.getElementById("overlay");
+const overlayCtx = overlay.getContext("2d");
+
+// ATIVAR CÂMERA
+navigator.mediaDevices.getUserMedia({ video:true })
+
+.then(stream=>{
+video.srcObject = stream;
+})
+
+.catch(()=>{
+document.getElementById("status").innerHTML =
+`<p class="alerta">Erro ao acessar câmera</p>`;
+});
+
+// AJUSTAR CANVAS
+video.addEventListener("loadedmetadata",()=>{
+
+overlay.width = video.videoWidth;
+overlay.height = video.videoHeight;
+
+setInterval(analisar,300);
+
+});
+
+// ===============================
+// CAPTURAR FRAME E ENVIAR AO AZURE
+// ===============================
+
+async function analisar(){
+
+if(video.videoWidth===0) return;
+
+try{
+
+const canvas=document.createElement("canvas");
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
+
+const ctx=canvas.getContext("2d");
+ctx.drawImage(video,0,0);
+
+const blob = await new Promise((resolve,reject)=>{
+
+canvas.toBlob((blob)=>{
+
+if(!blob || blob.size===0){
+reject("Imagem vazia");
+}
+else{
+resolve(blob);
+}
+
+},"image/jpeg",0.9);
+
+});
+
+const url = `${endpoint}/customvision/v3.0/Prediction/${projectId}/detect/iterations/${iterationName}/image`;
+
+const response = await fetch(url,{
+
+method:"POST",
+
+headers:{
+"Prediction-Key":predictionKey,
+"Content-Type":"application/octet-stream"
+},
+
+body:blob
+
+});
+
+if(!response.ok){
+throw new Error("Erro HTTP "+response.status);
+}
+
+const data = await response.json();
+
+console.log(data)
+
+if(!data.predictions) return;
+
+processarResultado(data.predictions);
+
+}
+
+catch(error){
+console.error("Erro:",error);
+}
+
+}
+
+// ===============================
+// PROCESSAR RESULTADO
+// ===============================
+
+function processarResultado(predictions){
+
+const threshold = 0.85;
+
+let capacete=false;
+let oculos=false;
+let auricular=false;
+let colete=false;
+
+overlayCtx.clearRect(0,0,overlay.width,overlay.height);
+
+predictions.forEach(p=>{
+
+if(p.probability >= threshold){
+
+const box = p.boundingBox;
+
+const left = box.left * overlay.width;
+const top = box.top * overlay.height;
+const width = box.width * overlay.width;
+const height = box.height * overlay.height;
+
+// CORES POR EPI
+
+if(p.tagName==="capacete") overlayCtx.strokeStyle="blue";
+else if(p.tagName==="oculos") overlayCtx.strokeStyle="green";
+else if(p.tagName==="protetor auricular") overlayCtx.strokeStyle="orange";
+else if(p.tagName==="colete") overlayCtx.strokeStyle="purple";
+else overlayCtx.strokeStyle="red";
+
+overlayCtx.lineWidth = 3;
+
+overlayCtx.strokeRect(left,top,width,height);
+
+overlayCtx.font="16px Arial";
+overlayCtx.fillStyle=overlayCtx.strokeStyle;
+
+overlayCtx.fillText(
+
+`${p.tagName} ${(p.probability*100).toFixed(1)}%`,
+left,
+top>20 ? top-5 : top+15
+
+);
+
+if(p.tagName==="Capacete") capacete=true;
+if(p.tagName==="Oculos") oculos=true;
+if(p.tagName==="protetor auricular") auricular=true;
+if(p.tagName==="Colete") colete=true;
+
+}
+
+});
+
+// ===============================
+// STATUS DOS EPIs
+// ===============================
+
+document.getElementById("resultado").innerHTML=`
+
+<p class="${capacete?'ok':'alerta'}">
+🪖 Capacete: ${capacete?'OK':'NÃO DETECTADO'}
+</p>
+
+<p class="${oculos?'ok':'alerta'}">
+🥽 Óculos: ${oculos?'OK':'NÃO DETECTADO'}
+</p>
+
+<p class="${auricular?'ok':'alerta'}">
+🎧 Auricular: ${auricular?'OK':'NÃO DETECTADO'}
+</p>
+
+<p class="${colete?'ok':'alerta'}">
+🦺 Colete: ${colete?'OK':'NÃO DETECTADO'}
+</p>
+
+`;
+
+}
+
+</script>
+
+</body>
+</html>
