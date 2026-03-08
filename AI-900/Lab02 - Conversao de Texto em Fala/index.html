@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Text to Speech</title>
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Azure Speech SDK -->
+    <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+
+    <style>
+        body {
+            background-color: #f1f3f5;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            border-radius: 15px;
+        }
+
+        textarea {
+            resize: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+
+                <div class="card shadow-lg">
+                    <div class="card-body">
+
+                        <h3 class="text-center mb-4">🔊 Azure Text to Speech</h3>
+
+                        <!-- Textarea -->
+                        <div class="mb-3">
+                            <label class="form-label">Digite o texto:</label>
+                            <textarea id="texto" class="form-control" rows="4"
+                                placeholder="Digite aqui o texto que será convertido em áudio..."></textarea>
+                        </div>
+
+                        <!-- Seleção de Voz -->
+                        <div class="mb-3">
+                            <label class="form-label">Selecione a voz (pt-BR):</label>
+                            <select id="vozSelect" class="form-select">
+                                <option value="pt-BR-FranciscaNeural">Francisca Neural (Feminina)</option>
+                                <option value="pt-BR-AntonioNeural">Antonio Neural (Masculina)</option>
+                                <option value="pt-BR-BrendaNeural">Brenda Neural (Feminina)</option>
+                                <option value="pt-BR-DonatoNeural">Donato Neural (Masculina)</option>
+                            </select>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-grid gap-2 mb-3">
+                            <button id="gerarBtn" class="btn btn-primary">
+                                Gerar Áudio
+                            </button>
+
+                            <button id="baixarBtn" class="btn btn-success" disabled>
+                                Baixar Áudio (.wav)
+                            </button>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="text-center">
+                            <span id="status" class="fw-semibold text-muted">
+                                Aguardando geração...
+                            </span>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+           CONFIGURAÇÃO DO SERVIÇO AZURE
+           ========================================== */
+
+
+        // 🔑 INSIRA AQUI SUA CHAVE DO AZURE
+        const subscriptionKey = "SUA_CHAVE_AQUI";
+
+        // 🌎 INSIRA AQUI SUA REGIÃO DO AZURE (ex: brazilsouth, eastus, westus)
+        const serviceRegion = "SUA_REGIAO_AQUI";
+
+        let audioBlob = null;
+
+        /* ==========================================
+           ELEMENTOS DA INTERFACE
+           ========================================== */
+
+        const textoInput = document.getElementById("texto");
+        const vozSelect = document.getElementById("vozSelect");
+        const gerarBtn = document.getElementById("gerarBtn");
+        const baixarBtn = document.getElementById("baixarBtn");
+        const statusSpan = document.getElementById("status");
+
+        /* ==========================================
+           FUNÇÃO PRINCIPAL - GERAR ÁUDIO
+           ========================================== */
+
+        gerarBtn.addEventListener("click", () => {
+
+            const texto = textoInput.value.trim();
+
+            if (!texto) {
+                alert("Digite um texto antes de gerar o áudio.");
+                return;
+            }
+
+            statusSpan.textContent = "Gerando áudio...";
+            baixarBtn.disabled = true;
+
+            // Configuração do Speech Service
+            const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(subscriptionKey, serviceRegion);
+
+            // Permite alterar dinamicamente a voz selecionada
+            speechConfig.speechSynthesisVoiceName = vozSelect.value;
+
+            // Configura saída em formato WAV
+            speechConfig.speechSynthesisOutputFormat =
+                SpeechSDK.SpeechSynthesisOutputFormat.Riff16Khz16BitMonoPcm;
+
+            // Cria sintetizador SEM saída automática (usaremos ArrayBuffer)
+            const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, null);
+
+            /* ==========================================
+               SÍNTESE DE TEXTO PARA ÁUDIO
+               O áudio será retornado como ArrayBuffer
+               ========================================== */
+
+            synthesizer.speakTextAsync(
+                texto,
+                result => {
+
+                    if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+
+                        // Converte ArrayBuffer em Blob WAV
+                        const audioData = result.audioData;
+                        audioBlob = new Blob([audioData], { type: "audio/wav" });
+
+                        // Cria URL temporária
+                        const audioUrl = URL.createObjectURL(audioBlob);
+
+                        // Reproduz automaticamente
+                        const audio = new Audio(audioUrl);
+                        audio.play();
+
+                        statusSpan.textContent = "Áudio gerado com sucesso!";
+                        baixarBtn.disabled = false;
+                    }
+                    else {
+                        statusSpan.textContent = "Erro ao gerar áudio.";
+                    }
+
+                    synthesizer.close();
+                },
+                error => {
+                    console.error(error);
+                    statusSpan.textContent = "Erro na síntese.";
+                    synthesizer.close();
+                }
+            );
+        });
+
+        /* ==========================================
+           FUNÇÃO SEPARADA PARA DOWNLOAD
+           ========================================== */
+
+        baixarBtn.addEventListener("click", downloadAudio);
+
+        function downloadAudio() {
+
+            if (!audioBlob) return;
+
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(audioBlob);
+            link.download = "audio_azure.wav";
+            link.click();
+        }
+    </script>
+
+</body>
+
+</html>

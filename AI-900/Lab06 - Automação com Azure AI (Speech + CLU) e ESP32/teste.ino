@@ -86,6 +86,7 @@ void loop() {
     Serial.println("WiFi desconectado. Reconectando...");
     conectarWiFi();
   }
+  Serial.println(WiFi.localIP());
 
   server.handleClient();
 }

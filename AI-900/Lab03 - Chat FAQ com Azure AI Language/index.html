@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atendimento - FAQ Empresa</title>
+
+<!-- Bootstrap 5 CDN -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body {
+    background-color: #0b141a;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+/* Container principal */
+.chat-container {
+    width: 100%;
+    max-width: 420px;
+    height: 90vh;
+    background-color: #111b21;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    overflow: hidden;
+}
+
+/* Cabeçalho */
+.chat-header {
+    background-color: #202c33;
+    padding: 15px;
+    color: #e9edef;
+    font-weight: 600;
+    text-align: center;
+    border-bottom: 1px solid #2a3942;
+}
+
+/* Área de mensagens */
+.chat-body {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background-color: #0b141a;
+}
+
+/* Bolhas */
+.message {
+    max-width: 80%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    word-wrap: break-word;
+}
+
+/* Usuário */
+.user-message {
+    background-color: #005c4b;
+    color: #e9edef;
+    margin-left: auto;
+    text-align: right;
+}
+
+/* Bot */
+.bot-message {
+    background-color: #202c33;
+    color: #e9edef;
+    margin-right: auto;
+}
+
+/* Rodapé */
+.chat-footer {
+    background-color: #202c33;
+    padding: 10px;
+    border-top: 1px solid #2a3942;
+}
+
+.input-group input {
+    background-color: #2a3942;
+    border: none;
+    color: #e9edef;
+}
+
+.input-group input:focus {
+    background-color: #2a3942;
+    color: #fff;
+    box-shadow: none;
+}
+
+/* Botão circular */
+.send-btn {
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    background-color: #00a884;
+    border: none;
+    color: white;
+    font-size: 18px;
+}
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+
+    <div class="chat-header">
+        Atendimento - FAQ Empresa
+    </div>
+
+    <div class="chat-body" id="chatBody">
+        <div class="message bot-message">
+            Olá! Como posso ajudar você hoje?
+        </div>
+    </div>
+
+    <div class="chat-footer">
+        <div class="input-group">
+            <input type="text" id="userInput" class="form-control" placeholder="Digite sua pergunta...">
+            <button class="send-btn ms-2" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const endpoint = "SEU_ENDPOINT_AQUI";
+const apiKey = "SUA_CHAVE_AQUI";
+
+const chatBody = document.getElementById("chatBody");
+const userInput = document.getElementById("userInput");
+
+// Enviar com Enter
+userInput.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        sendMessage();
+    }
+});
+
+// Adicionar mensagem na tela
+function addMessage(text, type) {
+    const msg = document.createElement("div");
+    msg.classList.add("message", type);
+    msg.innerText = text;
+    chatBody.appendChild(msg);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return msg;
+}
+
+// Enviar mensagem
+async function sendMessage() {
+    const question = userInput.value.trim();
+    if (!question) return;
+
+    addMessage(question, "user-message");
+    userInput.value = "";
+
+    // Digitando...
+    const typingMsg = addMessage("Digitando...", "bot-message");
+
+    try {
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Ocp-Apim-Subscription-Key": apiKey
+            },
+            body: JSON.stringify({
+                top: 1,
+                question: question
+            })
+        });
+
+        const data = await response.json();
+
+        chatBody.removeChild(typingMsg);
+
+        if (data.answers && data.answers.length > 0 && data.answers[0].answer) {
+            addMessage(data.answers[0].answer, "bot-message");
+        } else {
+            addMessage("Desculpe, não encontrei uma resposta para isso.", "bot-message");
+        }
+
+    } catch (error) {
+        chatBody.removeChild(typingMsg);
+        addMessage("Erro ao conectar ao serviço. Tente novamente mais tarde.", "bot-message");
+        console.error(error);
+    }
+}
+</script>
+
+</body>
+</html>
