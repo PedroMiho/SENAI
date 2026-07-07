@@ -36,6 +36,10 @@
     display: flex; align-items: center; gap: 8px; font-size: 14px; background: #fff;
     padding: 10px 16px; border-radius: 10px; border: 1px solid #dfe4ea; cursor: pointer; white-space: nowrap;
   }
+  select.toggle {
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    padding-right: 30px;
+  }
   .btn {
     padding: 10px 18px; border-radius: 10px; border: none; background: #3498db;
     color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s;
@@ -120,10 +124,13 @@
       <input type="text" id="busca" placeholder="Buscar por nome do item ou código de patrimônio..." />
     </div>
 
+    <select id="filtroAmbiente" class="toggle">
+      <option value="">Todos os ambientes</option>
+    </select>
+
     <button class="btn" id="btnExportar" onclick="exportarExcel()">
         📊 Exportar
     </button>
-
 
     <button class="btn" id="btnNovo">+ Novo Item</button>
   </div>
@@ -206,6 +213,18 @@
     return { locaisComFalta, totalFaltantes };
   }
 
+  function popularFiltroAmbiente(){
+    const select = document.getElementById('filtroAmbiente');
+    const valorAtual = select.value;
+
+    const ambientes = [...new Set(dados.map(d => d.local).filter(Boolean))].sort();
+
+    select.innerHTML = '<option value="">Todos os ambientes</option>' +
+      ambientes.map(a => `<option value="${a}">${a}</option>`).join('');
+
+    if(ambientes.includes(valorAtual)) select.value = valorAtual;
+  }
+
   async function carregarDados(){
     document.getElementById('loading').style.display = 'block';
     const { data, error } = await sb.from('patrimonio').select('*').order('id');
@@ -215,7 +234,7 @@
       return;
     }
     dados = data;
-    
+    popularFiltroAmbiente();
     render();
   }
 
@@ -226,7 +245,8 @@
     document.getElementById('totalFaltantes').textContent = totalFaltantes;
 
     const termo = document.getElementById('busca').value.toLowerCase().trim();
-    const soFaltando = false
+    const ambienteSelecionado = document.getElementById('filtroAmbiente').value;
+    const soFaltando = false;
     const tbody = document.getElementById('tbody');
     const vazio = document.getElementById('vazio');
     tbody.innerHTML = "";
@@ -236,7 +256,8 @@
         || (d.nome_item || '').toLowerCase().includes(termo)
         || String(d.cod_patrimonio || '').toLowerCase().includes(termo);
       const matchFaltando = !soFaltando || locaisComFalta.has(d.local);
-      return matchTermo && matchFaltando;
+      const matchAmbiente = !ambienteSelecionado || d.local === ambienteSelecionado;
+      return matchTermo && matchFaltando && matchAmbiente;
     });
 
     vazio.style.display = resultado.length ? "none" : "block";
@@ -317,31 +338,31 @@
   };
 
   document.getElementById('busca').addEventListener('input', render);
-function exportarExcel() {
-  const tabelaOriginal = document.getElementById("minhaTabela");
-  if (!tabelaOriginal) {
-    console.error("Tabela não encontrada! Verifique o ID.");
-    return;
-  }
+  document.getElementById('filtroAmbiente').addEventListener('change', render);
 
-  // Clona a tabela para não afetar a exibida na tela
-  const clone = tabelaOriginal.cloneNode(true);
-
-  // Índice da coluna que será removida (ex: última coluna = lixeira)
-  const indiceColuna = clone.rows[0].cells.length - 1; // ajuste se não for a última
-
-  // Remove a coluna em todas as linhas (thead + tbody)
-  Array.from(clone.rows).forEach(row => {
-    if (row.cells[indiceColuna]) {
-      row.deleteCell(indiceColuna);
+  function exportarExcel() {
+    const tabelaOriginal = document.getElementById("minhaTabela");
+    if (!tabelaOriginal) {
+      console.error("Tabela não encontrada! Verifique o ID.");
+      return;
     }
-  });
 
-  const wb = XLSX.utils.table_to_book(clone, { sheet: "Patrimônio" });
-  XLSX.writeFile(wb, "patrimonio.xlsx");
-}
+    // Clona a tabela para não afetar a exibida na tela
+    const clone = tabelaOriginal.cloneNode(true);
 
+    // Índice da coluna que será removida (última coluna = lixeira)
+    const indiceColuna = clone.rows[0].cells.length - 1;
 
+    // Remove a coluna em todas as linhas (thead + tbody)
+    Array.from(clone.rows).forEach(row => {
+      if (row.cells[indiceColuna]) {
+        row.deleteCell(indiceColuna);
+      }
+    });
+
+    const wb = XLSX.utils.table_to_book(clone, { sheet: "Patrimônio" });
+    XLSX.writeFile(wb, "patrimonio.xlsx");
+  }
 
   carregarDados();
 </script>
