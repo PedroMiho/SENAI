@@ -103,20 +103,17 @@
 <div class="container">
   <h1>📦 Controle de Patrimônio</h1>
 
-  <div class="cards">
-    <div class="card">
-      <div class="valor" id="totalItens">0</div>
-      <div class="label">Itens cadastrados</div>
-    </div>
-    <div class="card alerta">
-      <div class="valor" id="totalLocaisFalta">0</div>
-      <div class="label">Locais com itens faltando</div>
-    </div>
-    <div class="card alerta">
-      <div class="valor" id="totalFaltantes">0</div>
-      <div class="label">Itens faltando</div>
-    </div>
+ <div class="cards">
+  <div class="card">
+    <div class="valor" id="totalItens">0</div>
+    <div class="label">Itens cadastrados</div>
   </div>
+  <div class="card">
+    <div class="valor" id="totalAmbientes">0</div>
+    <div class="label">Ambientes cadastrados</div>
+  </div>
+</div>
+
 
   <div class="controles">
     <div class="busca">
@@ -239,45 +236,47 @@
   }
 
   function render(){
-    const { locaisComFalta, totalFaltantes } = agrupar();
-    document.getElementById('totalItens').textContent = dados.length;
-    document.getElementById('totalLocaisFalta').textContent = locaisComFalta.size;
-    document.getElementById('totalFaltantes').textContent = totalFaltantes;
+  const { locaisComFalta, totalFaltantes } = agrupar();
+  document.getElementById('totalItens').textContent = dados.length;
 
-    const termo = document.getElementById('busca').value.toLowerCase().trim();
-    const ambienteSelecionado = document.getElementById('filtroAmbiente').value;
-    const soFaltando = false;
-    const tbody = document.getElementById('tbody');
-    const vazio = document.getElementById('vazio');
-    tbody.innerHTML = "";
+  const totalAmbientes = new Set(dados.map(d => d.local).filter(Boolean)).size;
+  document.getElementById('totalAmbientes').textContent = totalAmbientes;
 
-    const resultado = dados.filter(d => {
-      const matchTermo = !termo
-        || (d.nome_item || '').toLowerCase().includes(termo)
-        || String(d.cod_patrimonio || '').toLowerCase().includes(termo);
-      const matchFaltando = !soFaltando || locaisComFalta.has(d.local);
-      const matchAmbiente = !ambienteSelecionado || d.local === ambienteSelecionado;
-      return matchTermo && matchFaltando && matchAmbiente;
-    });
+  const termo = document.getElementById('busca').value.toLowerCase().trim();
+  const ambienteSelecionado = document.getElementById('filtroAmbiente').value;
+  const soFaltando = false;
+  const tbody = document.getElementById('tbody');
+  const vazio = document.getElementById('vazio');
+  tbody.innerHTML = "";
 
-    vazio.style.display = resultado.length ? "none" : "block";
+  const resultado = dados.filter(d => {
+    const matchTermo = !termo
+      || (d.nome_item || '').toLowerCase().includes(termo)
+      || String(d.cod_patrimonio || '').toLowerCase().includes(termo);
+    const matchFaltando = !soFaltando || locaisComFalta.has(d.local);
+    const matchAmbiente = !ambienteSelecionado || d.local === ambienteSelecionado;
+    return matchTermo && matchFaltando && matchAmbiente;
+  });
 
-    resultado.forEach(d => {
-      const faltando = locaisComFalta.has(d.local);
-      const tr = document.createElement('tr');
-      if(faltando) tr.className = 'faltando';
-      tr.innerHTML = `
-        <td>${d.cod || ''}</td>
-        <td>${d.local || ''}</td>
-        <td>${d.cod_patrimonio || ''}</td>
-        <td>${d.nome_item || ''}</td>
-        <td>
-          <button class="btn btn-sm btn-danger" onclick="excluirItem(${d.id})">🗑️</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
+  vazio.style.display = resultado.length ? "none" : "block";
+
+  resultado.forEach(d => {
+    const faltando = locaisComFalta.has(d.local);
+    const tr = document.createElement('tr');
+    if(faltando) tr.className = 'faltando';
+    tr.innerHTML = `
+      <td>${d.cod || ''}</td>
+      <td>${d.local || ''}</td>
+      <td>${d.cod_patrimonio || ''}</td>
+      <td>${d.nome_item || ''}</td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="excluirItem(${d.id})">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 
   // ---- Modal ----
   const modalOverlay = document.getElementById('modalOverlay');
