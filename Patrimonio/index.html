@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Controle Patrimônio</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0;
+    background: #eef1f5;
+    color: #2c3e50;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 30px 20px; }
+  h1 { font-size: 26px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  .cards { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .card {
+    flex: 1; min-width: 200px; background: #fff; border-radius: 12px;
+    padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .card .valor { font-size: 28px; font-weight: 700; }
+  .card .label { font-size: 13px; color: #7f8c8d; margin-top: 4px; }
+  .card.alerta .valor { color: #e74c3c; }
+
+  .controles { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .busca { flex: 1; min-width: 260px; position: relative; }
+  .busca input {
+    width: 100%; padding: 12px 14px 12px 40px; border: 1px solid #dfe4ea;
+    border-radius: 10px; font-size: 14px; outline: none; transition: border-color .2s; background: #fff;
+  }
+  .busca input:focus { border-color: #3498db; }
+  .busca span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #95a5a6; }
+  .toggle {
+    display: flex; align-items: center; gap: 8px; font-size: 14px; background: #fff;
+    padding: 10px 16px; border-radius: 10px; border: 1px solid #dfe4ea; cursor: pointer; white-space: nowrap;
+  }
+  .btn {
+    padding: 10px 18px; border-radius: 10px; border: none; background: #3498db;
+    color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s;
+  }
+  .btn:hover { background: #2980b9; }
+  .btn-danger { background: #e74c3c; }
+  .btn-danger:hover { background: #c0392b; }
+  .btn-sm { padding: 6px 10px; font-size: 12px; }
+
+  .tabela-wrap { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  th, td { padding: 12px 16px; text-align: left; font-size: 14px; }
+  thead th { background: #2c3e50; color: #fff; font-weight: 600; }
+  tbody tr { border-bottom: 1px solid #f0f2f5; transition: background .15s; }
+  tbody tr:hover { background: #f8fafc; }
+  tr.faltando { background: #fdecea; }
+  tr.faltando:hover { background: #fbdad6; }
+
+    table {
+    width: 100%;
+    border-collapse: collapse;
+    }
+
+    table tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
+    }
+
+    table tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+    }
+
+    table tbody tr:hover {
+    background-color: #e9ecef;
+    }
+
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; background: #e74c3c; color: #fff;
+  }
+  .vazio { text-align: center; padding: 40px; color: #95a5a6; font-size: 14px; }
+  .loading { text-align: center; padding: 40px; color: #95a5a6; font-size: 14px; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal-overlay.ativo { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 420px;
+  }
+  .modal h2 { margin-top: 0; font-size: 18px; }
+  .modal label { font-size: 13px; color: #7f8c8d; display: block; margin: 10px 0 4px; }
+  .modal input {
+    width: 100%; padding: 10px; border: 1px solid #dfe4ea; border-radius: 8px; font-size: 14px;
+  }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>📦 Controle de Patrimônio</h1>
+
+  <div class="cards">
+    <div class="card">
+      <div class="valor" id="totalItens">0</div>
+      <div class="label">Itens cadastrados</div>
+    </div>
+    <div class="card alerta">
+      <div class="valor" id="totalLocaisFalta">0</div>
+      <div class="label">Locais com itens faltando</div>
+    </div>
+    <div class="card alerta">
+      <div class="valor" id="totalFaltantes">0</div>
+      <div class="label">Itens faltando</div>
+    </div>
+  </div>
+
+  <div class="controles">
+    <div class="busca">
+      <span>🔍</span>
+      <input type="text" id="busca" placeholder="Buscar por nome do item ou código de patrimônio..." />
+    </div>
+
+    <button class="btn" id="btnExportar" onclick="exportarExcel()">
+        📊 Exportar
+    </button>
+
+
+    <button class="btn" id="btnNovo">+ Novo Item</button>
+  </div>
+
+  <div class="tabela-wrap">
+    <table id="minhaTabela">
+      <thead>
+        <tr>
+          <th>Cod</th>
+          <th>Nome Local</th>
+          <th>Cod Patrimônio</th>
+          <th>Nome Item</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="loading" class="loading">Carregando dados...</div>
+    <div id="vazio" class="vazio" style="display:none;">Nenhum resultado encontrado.</div>
+  </div>
+</div>
+
+<!-- Modal Novo/Editar -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitulo">Novo Item</h2>
+    <input type="hidden" id="itemId" />
+    <label>Código</label>
+    <input type="text" id="fCod" placeholder="Ex: 001" />
+    <label>Nome do Local</label>
+    <input type="text" id="fLocal" placeholder="Ex: Sala 101" />
+    <label>Código Patrimônio</label>
+    <input type="text" id="fCodPatr" placeholder="Ex: 1001" />
+    <label>Nome do Item</label>
+    <input type="text" id="fItem" placeholder="Ex: Cadeira" />
+    <label>Faixa Patrimônio (opcional, ex: 1001/1010)</label>
+    <input type="text" id="fFaixa" placeholder="Ex: 1001/1010" />
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="btnCancelar">Cancelar</button>
+      <button class="btn" id="btnSalvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============================
+  // CONFIGURAÇÃO DO SUPABASE
+  // ============================
+  const SUPABASE_URL = 'https://nwuomxfjqnmzfzbcbcac.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_j4BV1_VB0NXadzprcT6mig_KAP9cZnP';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // ============================
+
+  let dados = [];
+
+  function calcQtdEsperada(faixa){
+    if(!faixa) return null;
+    const [start, end] = faixa.split("/").map(Number);
+    if(isNaN(start) || isNaN(end)) return null;
+    return (end - start) + 1;
+  }
+
+  function agrupar(){
+    const agrupados = {};
+    dados.forEach(d => {
+      const key = d.local + "||" + d.faixa_patrimonio;
+      if(!agrupados[key]) agrupados[key] = { faixa: d.faixa_patrimonio, qtd: 0, local: d.local };
+      agrupados[key].qtd++;
+    });
+    const locaisComFalta = new Set();
+    Object.values(agrupados).forEach(g => {
+      const esperado = calcQtdEsperada(g.faixa);
+      if(esperado !== null && g.qtd < esperado) locaisComFalta.add(g.local);
+    });
+    let totalFaltantes = 0;
+    Object.values(agrupados).forEach(g => {
+      const esperado = calcQtdEsperada(g.faixa);
+      if(esperado !== null) totalFaltantes += Math.max(0, esperado - g.qtd);
+    });
+    return { locaisComFalta, totalFaltantes };
+  }
+
+  async function carregarDados(){
+    document.getElementById('loading').style.display = 'block';
+    const { data, error } = await sb.from('patrimonio').select('*').order('id');
+    document.getElementById('loading').style.display = 'none';
+    if(error){
+      alert('Erro ao carregar dados: ' + error.message);
+      return;
+    }
+    dados = data;
+    
+    render();
+  }
+
+  function render(){
+    const { locaisComFalta, totalFaltantes } = agrupar();
+    document.getElementById('totalItens').textContent = dados.length;
+    document.getElementById('totalLocaisFalta').textContent = locaisComFalta.size;
+    document.getElementById('totalFaltantes').textContent = totalFaltantes;
+
+    const termo = document.getElementById('busca').value.toLowerCase().trim();
+    const soFaltando = false
+    const tbody = document.getElementById('tbody');
+    const vazio = document.getElementById('vazio');
+    tbody.innerHTML = "";
+
+    const resultado = dados.filter(d => {
+      const matchTermo = !termo
+        || (d.nome_item || '').toLowerCase().includes(termo)
+        || String(d.cod_patrimonio || '').toLowerCase().includes(termo);
+      const matchFaltando = !soFaltando || locaisComFalta.has(d.local);
+      return matchTermo && matchFaltando;
+    });
+
+    vazio.style.display = resultado.length ? "none" : "block";
+
+    resultado.forEach(d => {
+      const faltando = locaisComFalta.has(d.local);
+      const tr = document.createElement('tr');
+      if(faltando) tr.className = 'faltando';
+      tr.innerHTML = `
+        <td>${d.cod || ''}</td>
+        <td>${d.local || ''}</td>
+        <td>${d.cod_patrimonio || ''}</td>
+        <td>${d.nome_item || ''}</td>
+        <td>
+          <button class="btn btn-sm btn-danger" onclick="excluirItem(${d.id})">🗑️</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---- Modal ----
+  const modalOverlay = document.getElementById('modalOverlay');
+
+  function abrirModal(item = null){
+    document.getElementById('modalTitulo').textContent = item ? 'Editar Item' : 'Novo Item';
+    document.getElementById('itemId').value = item ? item.id : '';
+    document.getElementById('fCod').value = item ? item.cod || '' : '';
+    document.getElementById('fLocal').value = item ? item.local || '' : '';
+    document.getElementById('fCodPatr').value = item ? item.cod_patrimonio || '' : '';
+    document.getElementById('fItem').value = item ? item.nome_item || '' : '';
+    document.getElementById('fFaixa').value = item ? item.faixa_patrimonio || '' : '';
+    modalOverlay.classList.add('ativo');
+  }
+
+  function fecharModal(){ modalOverlay.classList.remove('ativo'); }
+
+  document.getElementById('btnNovo').addEventListener('click', () => abrirModal());
+  document.getElementById('btnCancelar').addEventListener('click', fecharModal);
+
+  document.getElementById('btnSalvar').addEventListener('click', async () => {
+    const id = document.getElementById('itemId').value;
+    const payload = {
+      cod: document.getElementById('fCod').value,
+      local: document.getElementById('fLocal').value,
+      cod_patrimonio: document.getElementById('fCodPatr').value,
+      nome_item: document.getElementById('fItem').value,
+      faixa_patrimonio: document.getElementById('fFaixa').value,
+    };
+
+    if(!payload.local || !payload.nome_item || !payload.cod_patrimonio){
+      alert('Preencha Local, Código Patrimônio e Nome do Item.');
+      return;
+    }
+
+    let error;
+    if(id){
+      ({ error } = await sb.from('patrimonio').update(payload).eq('id', id));
+    } else {
+      ({ error } = await sb.from('patrimonio').insert(payload));
+    }
+
+    if(error){ alert('Erro ao salvar: ' + error.message); return; }
+    fecharModal();
+    carregarDados();
+  });
+
+  window.editarItem = async (id) => {
+    const item = dados.find(d => d.id === id);
+    if(item) abrirModal(item);
+  };
+
+  window.excluirItem = async (id) => {
+    if(!confirm('Tem certeza que deseja excluir este item?')) return;
+    const { error } = await sb.from('patrimonio').delete().eq('id', id);
+    if(error){ alert('Erro ao excluir: ' + error.message); return; }
+    carregarDados();
+  };
+
+  document.getElementById('busca').addEventListener('input', render);
+function exportarExcel() {
+  const tabelaOriginal = document.getElementById("minhaTabela");
+  if (!tabelaOriginal) {
+    console.error("Tabela não encontrada! Verifique o ID.");
+    return;
+  }
+
+  // Clona a tabela para não afetar a exibida na tela
+  const clone = tabelaOriginal.cloneNode(true);
+
+  // Índice da coluna que será removida (ex: última coluna = lixeira)
+  const indiceColuna = clone.rows[0].cells.length - 1; // ajuste se não for a última
+
+  // Remove a coluna em todas as linhas (thead + tbody)
+  Array.from(clone.rows).forEach(row => {
+    if (row.cells[indiceColuna]) {
+      row.deleteCell(indiceColuna);
+    }
+  });
+
+  const wb = XLSX.utils.table_to_book(clone, { sheet: "Patrimônio" });
+  XLSX.writeFile(wb, "patrimonio.xlsx");
+}
+
+
+
+  carregarDados();
+</script>
+</body>
+</html>
