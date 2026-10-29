@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>English Pronunciation Trainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+<!-- Azure Speech SDK -->
+<script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+<style>
+/* ═══════════════════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════════════════ */
+:root {
+  --bg:        #08090d;
+  --s1:        #0e1018;
+  --s2:        #13161f;
+  --border:    #1e2233;
+  --border2:   #2a2f42;
+  --lime:      #c8ff00;
+  --lime2:     #9dcf00;
+  --blue:      #4a9eff;
+  --purple:    #8b5cf6;
+  --orange:    #ff7b2e;
+  --red:       #ff4560;
+  --green:     #00e5a0;
+  --yellow:    #ffd60a;
+  --text:      #e8ecf4;
+  --muted:     #5a6180;
+  --muted2:    #3a4058;
+  --font-h:    'Clash Display', sans-serif;
+  --font-b:    'Cabinet Grotesk', sans-serif;
+  --r:         12px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-weight: 400;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════════════
+   ANIMATED BACKGROUND GRID
+═══════════════════════════════════════════════════ */
+.bg-grid {
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: .35;
+  pointer-events: none;
+}
+.bg-glow {
+  position: fixed; z-index: 0; pointer-events: none;
+  border-radius: 50%; filter: blur(120px); opacity: .12;
+}
+.bg-glow-1 { width: 600px; height: 600px; background: var(--lime); top: -200px; left: -200px; }
+.bg-glow-2 { width: 500px; height: 500px; background: var(--blue); bottom: -150px; right: -150px; }
+
+/* ═══════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════ */
+.page { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+/* ═══════════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════════ */
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.5rem 0 2.5rem;
+}
+.logo {
+  display: flex; align-items: center; gap: .75rem;
+}
+.logo-badge {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--lime); display: flex; align-items: center; justify-content: center;
+}
+.logo-badge svg { width: 22px; height: 22px; }
+.logo-text { font-family: var(--font-h); font-size: 1.25rem; font-weight: 700; letter-spacing: -.5px; }
+.logo-text span { color: var(--lime); }
+.header-cred {
+  display: flex; align-items: center; gap: .5rem;
+}
+.cred-input {
+  background: var(--s2); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-family: var(--font-b);
+  font-size: .75rem; padding: .45rem .75rem; outline: none;
+  transition: border-color .2s;
+}
+.cred-input:focus { border-color: var(--lime); }
+.cred-input::placeholder { color: var(--muted); }
+
+/* ═══════════════════════════════════════════════════
+   SECTION TITLES
+═══════════════════════════════════════════════════ */
+.section-label {
+  font-size: .68rem; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: .75rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.section-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ═══════════════════════════════════════════════════
+   LESSON CARDS (text selection)
+═══════════════════════════════════════════════════ */
+.lessons-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: .75rem; margin-bottom: 2rem;
+}
+.lesson-card {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1rem;
+  cursor: pointer; transition: border-color .2s, transform .15s, box-shadow .2s;
+  position: relative; overflow: hidden;
+}
+.lesson-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(200,255,0,.05), transparent);
+  opacity: 0; transition: opacity .2s;
+}
+.lesson-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.lesson-card:hover::before { opacity: 1; }
+.lesson-card.active {
+  border-color: var(--lime) !important;
+  box-shadow: 0 0 0 1px var(--lime), 0 8px 32px rgba(200,255,0,.12);
+}
+.lesson-card.active::before { opacity: 1; }
+.lesson-level {
+  font-size: .62rem; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: .5rem;
+  padding: .2rem .5rem; border-radius: 4px; display: inline-block;
+}
+.level-a1 { background: rgba(0,229,160,.15); color: var(--green); }
+.level-a2 { background: rgba(74,158,255,.15); color: var(--blue); }
+.level-b1 { background: rgba(255,214,10,.15); color: var(--yellow); }
+.level-b2 { background: rgba(255,123,46,.15); color: var(--orange); }
+.level-c1 { background: rgba(255,69,96,.15); color: var(--red); }
+.lesson-title { font-family: var(--font-h); font-size: .92rem; font-weight: 600; line-height: 1.3; }
+.lesson-words { font-size: .72rem; color: var(--muted); margin-top: .35rem; }
+
+/* ═══════════════════════════════════════════════════
+   PRACTICE AREA
+═══════════════════════════════════════════════════ */
+.practice-card {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem;
+  position: relative; overflow: hidden;
+}
+.practice-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lime), transparent);
+}
+
+/* O texto da frase exibida para praticar */
+.ref-text {
+  font-family: var(--font-h); font-size: 1.35rem; font-weight: 600;
+  line-height: 1.7; letter-spacing: .2px;
+  margin-bottom: 1.5rem; min-height: 3rem;
+  color: var(--text);
+}
+.ref-text.placeholder { color: var(--muted); font-size: 1rem; font-weight: 500; font-family: var(--font-b); }
+
+/* Editor de texto personalizado */
+.custom-textarea {
+  background: var(--s2); border: 1px solid var(--border2);
+  border-radius: 10px; color: var(--text); font-family: var(--font-b);
+  font-size: .95rem; padding: .85rem 1rem; width: 100%;
+  min-height: 80px; resize: vertical; outline: none;
+  transition: border-color .2s; line-height: 1.6; margin-bottom: 1rem;
+}
+.custom-textarea:focus { border-color: var(--lime); }
+.custom-textarea::placeholder { color: var(--muted); }
+
+/* ═══════════════════════════════════════════════════
+   CONTROLS ROW
+═══════════════════════════════════════════════════ */
+.controls {
+  display: flex; gap: .65rem; flex-wrap: wrap; align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+/* Botões */
+.btn {
+  display: inline-flex; align-items: center; gap: .45rem;
+  font-family: var(--font-h); font-size: .82rem; font-weight: 600;
+  letter-spacing: .3px; padding: .65rem 1.2rem; border-radius: 8px;
+  border: none; cursor: pointer; transition: all .18s; white-space: nowrap;
+}
+.btn:disabled { opacity: .3; cursor: not-allowed; transform: none !important; }
+
+.btn-listen {
+  background: var(--s2); border: 1px solid var(--border2); color: var(--text);
+}
+.btn-listen:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); transform: translateY(-1px); }
+
+.btn-record {
+  background: var(--red); color: #fff;
+  box-shadow: 0 4px 16px rgba(255,69,96,.3);
+}
+.btn-record:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,69,96,.4); }
+.btn-record.recording {
+  animation: pulse-red 1s infinite;
+  background: #d93a50;
+}
+@keyframes pulse-red {
+  0%,100% { box-shadow: 0 4px 16px rgba(255,69,96,.4); }
+  50%      { box-shadow: 0 4px 32px rgba(255,69,96,.7); }
+}
+
+.btn-lime {
+  background: var(--lime); color: #0a0b0e;
+  box-shadow: 0 4px 16px rgba(200,255,0,.25);
+}
+.btn-lime:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,255,0,.35); }
+
+.btn-ghost {
+  background: transparent; border: 1px solid var(--border2); color: var(--muted);
+}
+.btn-ghost:hover:not(:disabled) { border-color: var(--border); color: var(--text); }
+
+/* Select de voz */
+.voice-select {
+  background: var(--s2); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-family: var(--font-b);
+  font-size: .8rem; padding: .65rem .9rem; cursor: pointer; outline: none;
+  transition: border-color .2s;
+}
+.voice-select:focus { border-color: var(--lime); }
+.voice-select option { background: var(--s2); }
+
+/* ═══════════════════════════════════════════════════
+   STATUS BAR
+═══════════════════════════════════════════════════ */
+.status-bar {
+  display: flex; align-items: center; gap: .6rem;
+  font-size: .8rem; color: var(--muted); padding: .6rem 1rem;
+  background: var(--s2); border-radius: 8px; margin-bottom: 1.5rem;
+  border: 1px solid var(--border); min-height: 40px;
+  transition: border-color .3s;
+}
+.status-bar.s-listen  { border-color: rgba(74,158,255,.4); color: var(--blue); }
+.status-bar.s-record  { border-color: rgba(255,69,96,.4);  color: var(--red); }
+.status-bar.s-ok      { border-color: rgba(0,229,160,.4);  color: var(--green); }
+.status-bar.s-error   { border-color: rgba(255,69,96,.4);  color: var(--red); }
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+.s-record .status-dot { animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .3; transform: scale(.7); } }
+
+/* ═══════════════════════════════════════════════════
+   SCORE PANEL
+═══════════════════════════════════════════════════ */
+.score-panel {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.75rem 2rem;
+  display: none; /* shown via JS */
+  animation: fadeUp .4s ease;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.score-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+}
+.score-title { font-family: var(--font-h); font-size: 1rem; font-weight: 700; }
+
+/* Círculos de pontuação */
+.score-circles { display: flex; gap: 1rem; flex-wrap: wrap; }
+.score-circle-wrap { text-align: center; }
+.score-circle {
+  width: 72px; height: 72px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; position: relative;
+  background: conic-gradient(var(--color) calc(var(--pct) * 1%), var(--s2) 0%);
+  box-shadow: 0 0 0 3px var(--s1), 0 0 0 4px var(--border);
+}
+.score-circle::before {
+  content: ''; position: absolute;
+  inset: 8px; border-radius: 50%; background: var(--s1);
+}
+.score-circle-val {
+  position: relative; z-index: 1;
+  font-family: var(--font-h); font-size: 1.1rem; font-weight: 700;
+  line-height: 1;
+}
+.score-circle-label {
+  font-size: .62rem; color: var(--muted); margin-top: .4rem;
+  text-transform: uppercase; letter-spacing: .8px;
+}
+
+/* Palavras coloridas por acerto */
+.words-result {
+  display: flex; flex-wrap: wrap; gap: .4rem;
+  margin-bottom: 1.5rem;
+}
+.word-chip {
+  padding: .3rem .65rem; border-radius: 6px;
+  font-family: var(--font-h); font-size: .95rem; font-weight: 600;
+  position: relative; cursor: default;
+  transition: transform .15s;
+}
+.word-chip:hover { transform: scale(1.05); }
+.w-excellent { background: rgba(0,229,160,.15); color: var(--green); border: 1px solid rgba(0,229,160,.3); }
+.w-good      { background: rgba(200,255,0,.12); color: var(--lime2); border: 1px solid rgba(200,255,0,.25); }
+.w-fair      { background: rgba(255,214,10,.12); color: var(--yellow); border: 1px solid rgba(255,214,10,.25); }
+.w-poor      { background: rgba(255,123,46,.14); color: var(--orange); border: 1px solid rgba(255,123,46,.3); }
+.w-bad       { background: rgba(255,69,96,.13); color: var(--red); border: 1px solid rgba(255,69,96,.3); }
+.w-omission  { background: rgba(90,97,128,.15); color: var(--muted); border: 1px dashed var(--muted2); text-decoration: line-through; }
+
+/* Tooltip da palavra */
+.word-chip[title] { cursor: help; }
+
+/* Legenda */
+.legend {
+  display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin-top: 1rem;
+}
+.legend-item { display: flex; align-items: center; gap: .4rem; font-size: .72rem; color: var(--muted); }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+/* Barra de progresso geral */
+.overall-bar-wrap { margin-top: 1.2rem; }
+.overall-bar-label {
+  display: flex; justify-content: space-between;
+  font-size: .75rem; color: var(--muted); margin-bottom: .4rem;
+}
+.overall-bar-bg {
+  height: 8px; background: var(--s2); border-radius: 99px; overflow: hidden;
+}
+.overall-bar-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--lime), var(--green));
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+
+/* Mensagem de feedback textual */
+.feedback-msg {
+  margin-top: 1.25rem; padding: .85rem 1rem;
+  border-radius: 10px; font-size: .85rem; line-height: 1.6;
+  background: rgba(200,255,0,.05); border: 1px solid rgba(200,255,0,.12);
+  color: var(--lime2);
+}
+
+/* ═══════════════════════════════════════════════════
+   HISTORY
+═══════════════════════════════════════════════════ */
+.history-list { display: flex; flex-direction: column; gap: .5rem; margin-top: .75rem; }
+.history-item {
+  display: flex; align-items: center; gap: .75rem;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 10px; padding: .65rem 1rem; font-size: .8rem;
+}
+.history-score {
+  font-family: var(--font-h); font-size: 1.1rem; font-weight: 700;
+  min-width: 42px; text-align: center;
+}
+.history-text { flex: 1; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.history-date { color: var(--muted2); font-size: .7rem; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════
+   WAVEFORM ANIMATION (recording indicator)
+═══════════════════════════════════════════════════ */
+.waveform {
+  display: flex; align-items: center; gap: 3px; height: 20px;
+}
+.waveform-bar {
+  width: 3px; border-radius: 99px;
+  background: var(--red); animation: wave 1s ease-in-out infinite;
+}
+.waveform-bar:nth-child(1) { height: 8px;  animation-delay: 0s; }
+.waveform-bar:nth-child(2) { height: 14px; animation-delay: .1s; }
+.waveform-bar:nth-child(3) { height: 20px; animation-delay: .2s; }
+.waveform-bar:nth-child(4) { height: 14px; animation-delay: .3s; }
+.waveform-bar:nth-child(5) { height: 8px;  animation-delay: .4s; }
+@keyframes wave {
+  0%,100% { transform: scaleY(1); }
+  50%      { transform: scaleY(.4); }
+}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .site-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .header-cred { flex-wrap: wrap; }
+  .score-circles { justify-content: center; }
+  .ref-text { font-size: 1.1rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+
+<div class="page">
+
+  <!-- ══════════ HEADER ══════════ -->
+  <header class="site-header">
+    <div class="logo">
+      <div class="logo-badge">
+        <!-- mic icon -->
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4z" fill="#0a0b0e"/>
+          <path d="M19 10a7 7 0 0 1-14 0M12 19v4M8 23h8" stroke="#0a0b0e" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="logo-text">Speak<span>Lab</span></div>
+    </div>
+    <div class="header-cred">
+      <!-- ⚠️ Insira sua Azure Subscription Key e Região aqui -->
+      <input id="azureKey"    class="cred-input" type="password" placeholder="Azure Key" style="width:200px"/>
+      <input id="azureRegion" class="cred-input" type="text"     placeholder="Região (ex: eastus)" style="width:130px"/>
+    </div>
+  </header>
+
+  <!-- ══════════ CHOOSE TEXT ══════════ -->
+  <div class="section-label">Escolha um texto para praticar</div>
+  <div class="lessons-grid" id="lessonsGrid">
+    <!-- Gerado via JS -->
+  </div>
+
+  <!-- ══════════ PRACTICE AREA ══════════ -->
+  <div class="section-label">Área de prática</div>
+  <div class="practice-card">
+
+    <!-- Texto de referência -->
+    <div id="refText" class="ref-text placeholder">
+      Selecione um texto acima ou escreva o seu próprio abaixo ↓
+    </div>
+
+    <!-- Campo para texto customizado -->
+    <textarea id="customText" class="custom-textarea"
+      placeholder="Ou escreva / cole seu próprio texto em inglês aqui..."></textarea>
+
+    <!-- Linha de controles -->
+    <div class="controls">
+      <!-- Voz TTS -->
+      <select id="voiceSelect" class="voice-select">
+        <optgroup label="American English">
+          <option value="en-US-JennyNeural">Jenny (F) — American</option>
+          <option value="en-US-GuyNeural">Guy (M) — American</option>
+          <option value="en-US-AriaNeural">Aria (F) — American</option>
+          <option value="en-US-DavisNeural">Davis (M) — American</option>
+        </optgroup>
+        <optgroup label="British English">
+          <option value="en-GB-SoniaNeural">Sonia (F) — British</option>
+          <option value="en-GB-RyanNeural">Ryan (M) — British</option>
+          <option value="en-GB-LibbyNeural">Libby (F) — British</option>
+        </optgroup>
+        <optgroup label="Australian English">
+          <option value="en-AU-NatashaNeural">Natasha (F) — Australian</option>
+          <option value="en-AU-WilliamNeural">William (M) — Australian</option>
+        </optgroup>
+      </select>
+
+      <!-- 1. Ouvir modelo -->
+      <button class="btn btn-listen" id="btnListen" onclick="ouvirModelo()" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+        </svg>
+        Ouvir modelo
+      </button>
+
+      <!-- 2. Gravar fala -->
+      <button class="btn btn-record" id="btnRecord" onclick="alternarGravacao()" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="11" r="4" fill="currentColor"/>
+          <path d="M19 10a7 7 0 0 1-14 0M12 19v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span id="recordLabel">Gravar minha voz</span>
+      </button>
+
+      <!-- Reset -->
+      <button class="btn btn-ghost" onclick="resetarTudo()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Resetar
+      </button>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar" id="statusBar">
+      <div class="status-dot"></div>
+      <span id="statusText">Selecione um texto e clique em "Ouvir modelo" para começar.</span>
+    </div>
+
+  </div><!-- /practice-card -->
+
+  <!-- ══════════ SCORE PANEL ══════════ -->
+  <div class="score-panel" id="scorePanel">
+
+    <div class="score-header">
+      <div class="score-title">📊 Resultado da sua pronúncia</div>
+      <div class="score-circles" id="scoreCircles">
+        <!-- Gerado via JS -->
+      </div>
+    </div>
+
+    <!-- Palavras com código de cor -->
+    <div class="section-label" style="margin-bottom:.75rem">Análise palavra por palavra</div>
+    <div class="words-result" id="wordsResult"></div>
+
+    <!-- Legenda -->
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Excelente (90-100)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--lime2)"></div>Bom (75-89)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Razoável (55-74)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>Fraco (35-54)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Muito fraco (0-34)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--muted)"></div>Omitida</div>
+    </div>
+
+    <!-- Barra geral -->
+    <div class="overall-bar-wrap">
+      <div class="overall-bar-label">
+        <span>Pontuação geral</span>
+        <span id="overallPct">0%</span>
+      </div>
+      <div class="overall-bar-bg"><div class="overall-bar-fill" id="overallFill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Mensagem textual de feedback -->
+    <div class="feedback-msg" id="feedbackMsg"></div>
+
+  </div><!-- /score-panel -->
+
+  <!-- ══════════ HISTORY ══════════ -->
+  <div style="margin-top:2rem">
+    <div class="section-label">Histórico de tentativas</div>
+    <div class="history-list" id="historyList">
+      <div style="font-size:.8rem;color:var(--muted);padding:.5rem 0">Nenhuma tentativa ainda.</div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- ════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════ -->
+<script>
+// ══════════════════════════════════════════════════════
+//  BANCO DE TEXTOS PARA PRATICAR
+//  Cada item: { id, level, title, text, words (aprox) }
+// ══════════════════════════════════════════════════════
+const LESSONS = [
+  {
+    id: 1, level: 'A1', title: 'Daily Greetings',
+    text: 'Good morning! How are you today? I am fine, thank you very much.',
+    words: 13
+  },
+  {
+    id: 2, level: 'A1', title: 'Numbers & Time',
+    text: 'I wake up at seven thirty in the morning and go to bed at ten o\'clock.',
+    words: 15
+  },
+  {
+    id: 3, level: 'A2', title: 'At the Coffee Shop',
+    text: 'I would like a large coffee with milk and two sugars, please. How much does it cost?',
+    words: 17
+  },
+  {
+    id: 4, level: 'A2', title: 'Weekend Plans',
+    text: 'This weekend I am going to visit my friends and we are going to watch a movie together.',
+    words: 17
+  },
+  {
+    id: 5, level: 'B1', title: 'Technology',
+    text: 'Smartphones have completely changed the way people communicate and access information around the world.',
+    words: 14
+  },
+  {
+    id: 6, level: 'B1', title: 'Environment',
+    text: 'Climate change is one of the most serious challenges facing humanity today, and we must act immediately.',
+    words: 17
+  },
+  {
+    id: 7, level: 'B2', title: 'Business Meeting',
+    text: 'I would appreciate the opportunity to discuss our quarterly performance and outline our strategic objectives for next year.',
+    words: 18
+  },
+  {
+    id: 8, level: 'B2', title: 'Health & Wellness',
+    text: 'Regular physical exercise combined with a balanced diet significantly reduces the risk of chronic diseases later in life.',
+    words: 18
+  },
+  {
+    id: 9, level: 'C1', title: 'AI & Society',
+    text: 'Artificial intelligence is fundamentally reshaping labor markets, raising profound ethical questions about automation, accountability, and the future of human creativity.',
+    words: 20
+  },
+  {
+    id: 10, level: 'C1', title: 'Global Economy',
+    text: 'The unprecedented volatility in global financial markets reflects deep structural imbalances that require coordinated international policy responses.',
+    words: 16
+  },
+];
+
+// Histórico de tentativas (em memória)
+let history = [];
+
+// Texto atualmente selecionado
+let currentText = '';
+
+// Flag de gravação ativa
+let isRecording = false;
+
+// Recognizer do Azure (instância global para poder parar)
+let recognizer = null;
+
+// ── Renderizar cards de lições ──────────────────────────
+function renderLessons() {
+  const grid = document.getElementById('lessonsGrid');
+  grid.innerHTML = LESSONS.map(l => `
+    <div class="lesson-card" id="lesson-${l.id}" onclick="selecionarLicao(${l.id})">
+      <div class="lesson-level level-${l.level.toLowerCase()}">${l.level}</div>
+      <div class="lesson-title">${l.title}</div>
+      <div class="lesson-words">~${l.words} words</div>
+    </div>
+  `).join('');
+}
+
+// ── Selecionar uma lição ────────────────────────────────
+function selecionarLicao(id) {
+  const lesson = LESSONS.find(l => l.id === id);
+  if (!lesson) return;
+
+  // Atualiza visual do card ativo
+  document.querySelectorAll('.lesson-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('lesson-' + id).classList.add('active');
+
+  // Preenche o texto de referência
+  currentText = lesson.text;
+  const ref = document.getElementById('refText');
+  ref.textContent = lesson.text;
+  ref.classList.remove('placeholder');
+
+  // Limpa textarea customizado
+  document.getElementById('customText').value = '';
+
+  // Habilita botões
+  habilitarBotoes(true);
+
+  // Reseta resultado anterior
+  resetarResultado();
+  setStatus('idle', `Texto carregado: "${lesson.title}". Clique em Ouvir modelo ou Gravar minha voz.`);
+}
+
+// ── Usa o texto do textarea customizado ────────────────
+document.getElementById('customText').addEventListener('input', function() {
+  const txt = this.value.trim();
+  if (txt.length > 0) {
+    currentText = txt;
+    const ref = document.getElementById('refText');
+    ref.textContent = txt;
+    ref.classList.remove('placeholder');
+    // Remove seleção de lição
+    document.querySelectorAll('.lesson-card').forEach(c => c.classList.remove('active'));
+    habilitarBotoes(true);
+    resetarResultado();
+  }
+});
+
+// ── Habilitar/desabilitar botões ────────────────────────
+function habilitarBotoes(ok) {
+  document.getElementById('btnListen').disabled = !ok;
+  document.getElementById('btnRecord').disabled = !ok;
+}
+
+// ══════════════════════════════════════════════════════
+//  TTS: OUVIR O MODELO
+//  Usa Azure TTS para sintetizar o texto de referência
+// ══════════════════════════════════════════════════════
+async function ouvirModelo() {
+  const key    = document.getElementById('azureKey').value.trim();
+  const region = document.getElementById('azureRegion').value.trim();
+
+  if (!validarCredenciais(key, region)) return;
+  if (!currentText) { setStatus('error', 'Nenhum texto selecionado.'); return; }
+
+  setStatus('listen', '🔊 Sintetizando áudio com voz nativa…');
+  document.getElementById('btnListen').disabled = true;
+
+  try {
+    const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(key, region);
+    speechConfig.speechSynthesisLanguage  = 'en-US';
+    speechConfig.speechSynthesisVoiceName = document.getElementById('voiceSelect').value;
+
+    // Saída direta no speaker (AudioConfig padrão)
+    const audioConfig = SpeechSDK.AudioConfig.fromDefaultSpeakerOutput();
+    const synth = new SpeechSDK.SpeechSynthesizer(speechConfig, audioConfig);
+
+    await new Promise((resolve, reject) => {
+      synth.speakTextAsync(
+        currentText,
+        result => {
+          synth.close();
+          if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) resolve();
+          else reject(new Error(result.errorDetails || 'Síntese falhou'));
+        },
+        err => { synth.close(); reject(err); }
+      );
+    });
+
+    setStatus('ok', '✅ Reprodução concluída. Agora grave sua voz e veja sua pontuação!');
+  } catch(e) {
+    setStatus('error', '❌ Erro ao sintetizar: ' + (e.message || e));
+  } finally {
+    document.getElementById('btnListen').disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  GRAVAÇÃO + PRONUNCIATION ASSESSMENT
+//  Usa SpeechRecognizer com PronunciationAssessmentConfig
+//  para avaliar pronúncia palavra por palavra
+// ══════════════════════════════════════════════════════
+async function alternarGravacao() {
+  if (isRecording) {
+    pararGravacao();
+  } else {
+    iniciarGravacao();
+  }
+}
+
+async function iniciarGravacao() {
+  const key    = document.getElementById('azureKey').value.trim();
+  const region = document.getElementById('azureRegion').value.trim();
+
+  if (!validarCredenciais(key, region)) return;
+  if (!currentText) { setStatus('error', 'Selecione um texto primeiro.'); return; }
+
+  isRecording = true;
+  document.getElementById('btnRecord').classList.add('recording');
+  document.getElementById('recordLabel').textContent = 'Parar gravação';
+  document.getElementById('btnListen').disabled = true;
+
+  setStatus('record', '', true); // mostra waveform
+
+  resetarResultado();
+
+  try {
+    // ── 1. Configuração do Speech SDK ──────────────────────
+    const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(key, region);
+    speechConfig.speechRecognitionLanguage = 'en-US';
+
+    // ── 2. Configura Pronunciation Assessment ──────────────
+    //  referenceText: o texto esperado (usado para comparação)
+    //  gradingSystem: HundredMark (0-100)
+    //  granularity: Word (análise palavra a palavra)
+    //  enableMiscue: true (detecta palavras omitidas/inseridas)
+    const pronunciationConfig = new SpeechSDK.PronunciationAssessmentConfig(
+      currentText,
+      SpeechSDK.PronunciationAssessmentGradingSystem.HundredMark,
+      SpeechSDK.PronunciationAssessmentGranularity.Word,
+      true // enableMiscue
+    );
+
+    // ── 3. Microfone do usuário ────────────────────────────
+    const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+
+    // ── 4. Cria o reconhecedor ─────────────────────────────
+    recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+    // Aplica a config de pronúncia ao recognizer
+    pronunciationConfig.applyTo(recognizer);
+
+    // ── 5. Inicia reconhecimento contínuo ──────────────────
+    //  recognizeOnceAsync: para quando detecta silêncio
+    recognizer.recognizeOnceAsync(
+      result => {
+        pararGravacaoUI();
+
+        if (result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+          // Extrai o JSON de assessment da propriedade do resultado
+          const assessmentJson = result.properties.getProperty(
+            SpeechSDK.PropertyId.SpeechServiceResponse_JsonResult
+          );
+          processarResultado(assessmentJson);
+        } else if (result.reason === SpeechSDK.ResultReason.NoMatch) {
+          setStatus('error', '⚠️ Fala não reconhecida. Fale mais perto do microfone.');
+        } else {
+          setStatus('error', '❌ Erro no reconhecimento: ' + (result.errorDetails || result.reason));
+        }
+      },
+      err => {
+        pararGravacaoUI();
+        setStatus('error', '❌ Erro de microfone: ' + err);
+      }
+    );
+
+  } catch(e) {
+    pararGravacaoUI();
+    setStatus('error', '❌ ' + (e.message || e));
+  }
+}
+
+function pararGravacao() {
+  if (recognizer) {
+    recognizer.stopContinuousRecognitionAsync(() => {
+      recognizer.close();
+      recognizer = null;
+    });
+  }
+  pararGravacaoUI();
+  setStatus('idle', 'Gravação interrompida.');
+}
+
+function pararGravacaoUI() {
+  isRecording = false;
+  document.getElementById('btnRecord').classList.remove('recording');
+  document.getElementById('recordLabel').textContent = 'Gravar minha voz';
+  document.getElementById('btnListen').disabled = false;
+}
+
+// ══════════════════════════════════════════════════════
+//  PROCESSAR RESULTADO DO PRONUNCIATION ASSESSMENT
+// ══════════════════════════════════════════════════════
+function processarResultado(jsonStr) {
+  let data;
+  try { data = JSON.parse(jsonStr); } catch(e) {
+    setStatus('error', '❌ Erro ao processar resultado.');
+    return;
+  }
+
+  // Navega na estrutura do JSON do Azure
+  // NBest[0].PronunciationAssessment contém as métricas
+  const best = data.NBest && data.NBest[0];
+  if (!best || !best.PronunciationAssessment) {
+    setStatus('error', '❌ Dados de assessment não disponíveis.');
+    return;
+  }
+
+  const pa    = best.PronunciationAssessment;
+  const words = best.Words || [];
+
+  const accuracy    = Math.round(pa.AccuracyScore    || 0);
+  const fluency     = Math.round(pa.FluencyScore     || 0);
+  const completeness= Math.round(pa.CompletenessScore|| 0);
+  const pronScore   = Math.round(pa.PronScore        || pa.PronunciationScore || 0);
+
+  // Exibe painel
+  mostrarScorePanel(accuracy, fluency, completeness, pronScore, words);
+
+  // Salva no histórico
+  adicionarHistorico(pronScore, currentText);
+
+  setStatus('ok', `✅ Análise concluída! Pontuação geral: ${pronScore}/100`);
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDERIZAR PAINEL DE PONTUAÇÃO
+// ══════════════════════════════════════════════════════
+function mostrarScorePanel(accuracy, fluency, completeness, overall, words) {
+  const panel = document.getElementById('scorePanel');
+  panel.style.display = 'block';
+
+  // Círculos de métricas
+  const metrics = [
+    { label: 'Overall',      val: overall,     color: scoreColor(overall) },
+    { label: 'Accuracy',     val: accuracy,    color: scoreColor(accuracy) },
+    { label: 'Fluency',      val: fluency,     color: scoreColor(fluency) },
+    { label: 'Completeness', val: completeness,color: scoreColor(completeness) },
+  ];
+
+  document.getElementById('scoreCircles').innerHTML = metrics.map(m => `
+    <div class="score-circle-wrap">
+      <div class="score-circle" style="--pct:${m.val};--color:${m.color}">
+        <div class="score-circle-val" style="color:${m.color}">${m.val}</div>
+      </div>
+      <div class="score-circle-label">${m.label}</div>
+    </div>
+  `).join('');
+
+  // Palavras coloridas
+  document.getElementById('wordsResult').innerHTML = words.map(w => {
+    const wpa = w.PronunciationAssessment || {};
+    const errorType = wpa.ErrorType || 'None';
+
+    if (errorType === 'Omission') {
+      return `<div class="word-chip w-omission" title="Palavra omitida">${w.Word}</div>`;
+    }
+
+    const score = Math.round(wpa.AccuracyScore || 0);
+    const cls = scoreClass(score);
+    const phonemes = (w.Phonemes || []).map(p =>
+      `${p.Phoneme}: ${Math.round((p.PronunciationAssessment||{}).AccuracyScore||0)}`
+    ).join(' | ');
+
+    return `<div class="word-chip ${cls}" title="Accuracy: ${score}/100${phonemes ? '\n' + phonemes : ''}">${w.Word} <sup style="font-size:.6em;opacity:.7">${score}</sup></div>`;
+  }).join('');
+
+  // Barra geral
+  setTimeout(() => {
+    document.getElementById('overallFill').style.width = overall + '%';
+    document.getElementById('overallPct').textContent = overall + '/100';
+  }, 100);
+
+  // Mensagem de feedback
+  document.getElementById('feedbackMsg').innerHTML = gerarFeedback(overall, accuracy, fluency, completeness);
+
+  // Scroll suave até o painel
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Cores por faixa ──────────────────────────────────
+function scoreColor(s) {
+  if (s >= 90) return 'var(--green)';
+  if (s >= 75) return 'var(--lime)';
+  if (s >= 55) return 'var(--yellow)';
+  if (s >= 35) return 'var(--orange)';
+  return 'var(--red)';
+}
+function scoreClass(s) {
+  if (s >= 90) return 'w-excellent';
+  if (s >= 75) return 'w-good';
+  if (s >= 55) return 'w-fair';
+  if (s >= 35) return 'w-poor';
+  return 'w-bad';
+}
+
+// ── Gerar mensagem de feedback contextual ─────────────
+function gerarFeedback(overall, accuracy, fluency, completeness) {
+  let msgs = [];
+
+  if (overall >= 90) {
+    msgs.push('🏆 Excelente! Sua pronúncia está no nível nativo. Continue praticando para manter o nível.');
+  } else if (overall >= 75) {
+    msgs.push('👍 Muito bom! Sua pronúncia está clara e compreensível. Foque nas palavras marcadas em amarelo.');
+  } else if (overall >= 55) {
+    msgs.push('📈 Bom progresso! Você está indo bem, mas ainda há espaço para melhorar.');
+  } else if (overall >= 35) {
+    msgs.push('💪 Continue praticando! Ouça o modelo com atenção e repita cada palavra individualmente.');
+  } else {
+    msgs.push('🎯 Não desanime! A pronúncia em inglês leva tempo. Ouça o modelo e repita devagar.');
+  }
+
+  if (accuracy < 70)     msgs.push('• Accuracy baixa: foque na articulação exata de cada som.');
+  if (fluency < 65)      msgs.push('• Fluency baixa: tente falar sem pausas longas entre as palavras.');
+  if (completeness < 80) msgs.push('• Completeness baixa: você pode ter omitido algumas palavras. Leia o texto inteiro.');
+
+  return msgs.join('<br/>');
+}
+
+// ══════════════════════════════════════════════════════
+//  HISTÓRICO
+// ══════════════════════════════════════════════════════
+function adicionarHistorico(score, text) {
+  history.unshift({ score, text, date: new Date() });
+  renderHistorico();
+}
+
+function renderHistorico() {
+  const list = document.getElementById('historyList');
+  if (history.length === 0) {
+    list.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0">Nenhuma tentativa ainda.</div>';
+    return;
+  }
+  list.innerHTML = history.slice(0, 10).map(h => `
+    <div class="history-item">
+      <div class="history-score" style="color:${scoreColor(h.score)}">${h.score}</div>
+      <div class="history-text">${h.text}</div>
+      <div class="history-date">${formatDate(h.date)}</div>
+    </div>
+  `).join('');
+}
+
+function formatDate(d) {
+  return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+}
+
+// ══════════════════════════════════════════════════════
+//  UTILITÁRIOS
+// ══════════════════════════════════════════════════════
+function setStatus(tipo, msg, waveform = false) {
+  const bar  = document.getElementById('statusBar');
+  const text = document.getElementById('statusText');
+
+  bar.className = 'status-bar';
+  const map = { listen:'s-listen', record:'s-record', ok:'s-ok', error:'s-error' };
+  if (map[tipo]) bar.classList.add(map[tipo]);
+
+  if (waveform) {
+    text.innerHTML = `
+      <div class="waveform">
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+      </div>
+      &nbsp;Gravando… fale a frase em inglês agora!
+    `;
+  } else {
+    text.textContent = msg;
+  }
+}
+
+function validarCredenciais(key, region) {
+  if (!key || !region) {
+    setStatus('error', '❌ Preencha a Azure Key e a Região no topo da página.');
+    return false;
+  }
+  return true;
+}
+
+function resetarResultado() {
+  document.getElementById('scorePanel').style.display = 'none';
+  document.getElementById('wordsResult').innerHTML = '';
+  document.getElementById('overallFill').style.width = '0%';
+  document.getElementById('overallPct').textContent = '0%';
+}
+
+function resetarTudo() {
+  resetarResultado();
+  currentText = '';
+  document.getElementById('refText').textContent = 'Selecione um texto acima ou escreva o seu próprio abaixo ↓';
+  document.getElementById('refText').classList.add('placeholder');
+  document.getElementById('customText').value = '';
+  document.querySelectorAll('.lesson-card').forEach(c => c.classList.remove('active'));
+  habilitarBotoes(false);
+  setStatus('idle', 'Pronto para começar. Selecione um texto acima.');
+}
+
+// ══════════════════════════════════════════════════════
+//  INICIALIZAÇÃO
+// ══════════════════════════════════════════════════════
+renderLessons();
+renderHistorico();
+setStatus('idle', 'Selecione um texto e clique em "Ouvir modelo" para começar.');
+</script>
+</body>
+</html>

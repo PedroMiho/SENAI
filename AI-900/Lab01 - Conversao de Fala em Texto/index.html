@@ -1,194 +1,623 @@
 <!DOCTYPE html>
-<html lang="pt-br">
-
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azure Speech to Text</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Azure Speech to Text</title>
 
-    <!-- Bootstrap 5 CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap 5 via CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-    <!-- Azure Speech SDK -->
-    <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+  <!-- SDK oficial do Azure Cognitive Speech via CDN -->
+  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
 
-    <style>
-        body {
-            background-color: #f1f3f5;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+  <style>
+    /* ============================================================
+       VARIÁVEIS E BASE
+    ============================================================ */
+    :root {
+      --bg:          #eef0f4;
+      --card-bg:     #ffffff;
+      --accent:      #0063b1;
+      --accent-dark: #004a87;
+      --danger:      #d92b3a;
+      --success:     #1a9956;
+      --muted:       #6b7280;
+      --border:      #d1d5db;
+      --text:        #111827;
+      --pulse-color: #1a9956;
+    }
 
-        .status-indicator {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background-color: red;
-            transition: 0.3s ease;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .status-listening {
-            background-color: #28a745 !important;
-            box-shadow: 0 0 10px #28a745;
-        }
-    </style>
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ============================================================
+       CARD PRINCIPAL
+    ============================================================ */
+    .speech-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
+      padding: 2.5rem 2.75rem;
+      width: 100%;
+      max-width: 680px;
+      border-top: 5px solid var(--accent);
+    }
+
+    /* ============================================================
+       CABEÇALHO
+    ============================================================ */
+    .card-header-custom {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .card-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .card-subtitle {
+      font-size: .875rem;
+      color: var(--muted);
+      margin-top: .35rem;
+    }
+
+    /* ============================================================
+       INDICADOR DE STATUS
+    ============================================================ */
+    .status-wrapper {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      background: #f3f4f6;
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: .5rem 1.1rem;
+      width: fit-content;
+      margin: 0 auto 1.75rem;
+      transition: background .3s;
+    }
+
+    .status-wrapper.listening {
+      background: #ecfdf5;
+      border-color: #6ee7b7;
+    }
+
+    /* Círculo de status */
+    .status-dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+
+    .status-dot.listening {
+      background: var(--success);
+      animation: pulse-dot 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(26, 153, 86, .6); }
+      50%       { box-shadow: 0 0 0 7px rgba(26, 153, 86, 0); }
+    }
+
+    .status-text {
+      font-family: 'Space Mono', monospace;
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: .5px;
+      transition: color .3s;
+    }
+
+    .status-text.listening { color: var(--success); }
+
+    /* ============================================================
+       CONFIGURAÇÃO (chave e região)
+    ============================================================ */
+    .config-section {
+      background: #f8f9ff;
+      border: 1px dashed #b0bcf0;
+      border-radius: 12px;
+      padding: 1.1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .config-section label {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: .35rem;
+      display: block;
+    }
+
+    .config-section input {
+      font-family: 'Space Mono', monospace;
+      font-size: .82rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: .45rem .75rem;
+      width: 100%;
+      color: var(--text);
+      background: #fff;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .config-section input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,99,177,.15);
+    }
+
+    /* ============================================================
+       TEXTAREA
+    ============================================================ */
+    .textarea-wrapper {
+      position: relative;
+      margin-bottom: 1.5rem;
+    }
+
+    .textarea-label {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: .45rem;
+    }
+
+    #textoReconhecido {
+      font-family: 'DM Sans', sans-serif;
+      font-size: .95rem;
+      line-height: 1.65;
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      resize: vertical;
+      width: 100%;
+      min-height: 180px;
+      background: #fafafa;
+      transition: border-color .25s, box-shadow .25s;
+    }
+
+    #textoReconhecido:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,99,177,.12);
+      background: #fff;
+    }
+
+    #textoReconhecido.listening-active {
+      border-color: var(--success);
+      background: #f0fdf6;
+    }
+
+    .char-count {
+      position: absolute;
+      bottom: .55rem;
+      right: .85rem;
+      font-size: .72rem;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       BOTÕES
+    ============================================================ */
+    .btn-speech {
+      font-family: 'Space Mono', monospace;
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: .5px;
+      padding: .7rem 1.6rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .2s, opacity .2s;
+    }
+
+    .btn-speech:active:not(:disabled) { transform: scale(.97); }
+
+    .btn-start {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(0,99,177,.35);
+    }
+
+    .btn-start:hover:not(:disabled) {
+      background: var(--accent-dark);
+      box-shadow: 0 6px 18px rgba(0,99,177,.45);
+    }
+
+    .btn-stop {
+      background: #fff;
+      color: var(--danger);
+      border: 2px solid var(--danger);
+      box-shadow: 0 2px 8px rgba(217,43,58,.15);
+    }
+
+    .btn-stop:hover:not(:disabled) {
+      background: var(--danger);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(217,43,58,.35);
+    }
+
+    .btn-speech:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-clear {
+      font-family: 'Space Mono', monospace;
+      font-size: .75rem;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: .4rem .8rem;
+      border-radius: 8px;
+      transition: background .2s, color .2s;
+    }
+
+    .btn-clear:hover { background: #f3f4f6; color: var(--text); }
+
+    /* ============================================================
+       RODAPÉ DA PÁGINA
+    ============================================================ */
+    .page-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    .page-footer span {
+      font-family: 'Space Mono', monospace;
+      color: var(--accent);
+    }
+
+    /* ============================================================
+       ALERTA DE ERRO
+    ============================================================ */
+    #alertaErro {
+      display: none;
+      border-radius: 10px;
+      font-size: .85rem;
+      padding: .7rem 1rem;
+      margin-bottom: 1rem;
+    }
+
+    /* ============================================================
+       RESPONSIVO
+    ============================================================ */
+    @media (max-width: 480px) {
+      .speech-card { padding: 1.75rem 1.25rem; }
+      .card-title  { font-size: 1.3rem; }
+    }
+  </style>
 </head>
-
 <body>
 
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
+  <div class="speech-card">
 
-                <div class="card shadow-lg">
-                    <div class="card-body">
-
-                        <h2 class="text-center mb-4">🎤 Azure Speech to Text</h2>
-
-                        <!-- Status -->
-                        <div class="d-flex align-items-center justify-content-center mb-3">
-                            <div id="statusCircle" class="status-indicator me-2"></div>
-                            <span id="statusText">Parado</span>
-                        </div>
-
-                        <!-- Textarea -->
-                        <div class="mb-3">
-                            <textarea id="output" class="form-control" rows="6"
-                                placeholder="O texto reconhecido aparecerá aqui..." readonly></textarea>
-                        </div>
-
-                        <!-- Buttons -->
-                        <div class="text-center">
-                            <button id="startBtn" class="btn btn-success me-2">Iniciar</button>
-                            <button id="stopBtn" class="btn btn-danger" disabled>Parar</button>
-                        </div>
-
-                    </div>
-                </div>
-
-            </div>
-        </div>
+    <!-- ── CABEÇALHO ────────────────────────────────────────── -->
+    <div class="card-header-custom">
+      <div class="card-title">🎤 Azure Speech to Text</div>
+      <div class="card-subtitle">Reconhecimento de voz contínuo · Português (pt-BR)</div>
     </div>
 
-    <script>
-        /* ================================
-           CONFIGURAÇÃO DO SERVIÇO
-           ================================= */
+    <!-- ── ALERTA DE ERRO ────────────────────────────────────── -->
+    <div id="alertaErro" class="alert alert-danger" role="alert"></div>
+
+    <!-- ── CONFIGURAÇÃO: CHAVE E REGIÃO ─────────────────────── -->
+    <!--
+      ╔══════════════════════════════════════════════════════════╗
+      ║  CONFIGURAÇÃO DO AZURE SPEECH SERVICE                   ║
+      ║  Preencha os campos abaixo com suas credenciais Azure.  ║
+      ║  Você pode inserir diretamente no código (variáveis JS) ║
+      ║  OU digitar nos campos da interface.                    ║
+      ╚══════════════════════════════════════════════════════════╝
+    -->
+    <div class="config-section">
+      <div class="row g-2">
+        <div class="col-12 col-sm-7">
+          <label for="inputKey">🔑 Subscription Key</label>
+          <input
+            type="password"
+            id="inputKey"
+            placeholder="Cole sua chave do Azure aqui"
+            autocomplete="off"
+          />
+        </div>
+        <div class="col-12 col-sm-5">
+          <label for="inputRegion">🌍 Região</label>
+          <input
+            type="text"
+            id="inputRegion"
+            placeholder="ex: eastus, brazilsouth"
+            value=""
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INDICADOR DE STATUS ───────────────────────────────── -->
+    <div class="status-wrapper" id="statusWrapper">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusTexto">Parado</span>
+    </div>
+
+    <!-- ── TEXTAREA DE RESULTADO ────────────────────────────── -->
+    <div class="textarea-wrapper">
+      <div class="textarea-label">📝 Texto reconhecido</div>
+      <textarea
+        id="textoReconhecido"
+        readonly
+        placeholder="O texto reconhecido aparecerá aqui…"
+      ></textarea>
+      <span class="char-count" id="charCount">0 chars</span>
+    </div>
+
+    <!-- ── BOTÕES ────────────────────────────────────────────── -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div class="d-flex gap-2">
+        <button class="btn-speech btn-start" id="btnIniciar" onclick="iniciarReconhecimento()">
+          ▶ Iniciar
+        </button>
+        <button class="btn-speech btn-stop" id="btnParar" onclick="pararReconhecimento()" disabled>
+          ■ Parar
+        </button>
+      </div>
+      <button class="btn-clear" onclick="limparTexto()" title="Limpar texto">
+        🗑 Limpar
+      </button>
+    </div>
+
+  </div><!-- /.speech-card -->
 
 
-        // 🔑 INSIRA AQUI SUA CHAVE DO AZURE
-        const subscriptionKey = "SUA_CHAVE_AQUI";
+  <!-- Bootstrap 5 JS via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-        // 🌎 INSIRA AQUI SUA REGIÃO DO AZURE (ex: brazilsouth, eastus, westus)
-        const serviceRegion = "SUA_REGIAO_AQUI";
-        let recognizer;
-        let textoFinal = "";
-        let textoParcial = "";
+  <script>
+    /* ============================================================
+       CONFIGURAÇÃO PADRÃO (opcional — pode deixar vazio e preencher
+       na interface gráfica acima)
+    ============================================================ */
+    const SUBSCRIPTION_KEY_PADRAO = "";   // ← insira sua chave aqui (opcional)
+    const SERVICE_REGION_PADRAO   = "";   // ← insira sua região aqui (ex: "eastus")
 
-        /* ================================
-           ELEMENTOS DA INTERFACE
-           ================================= */
+    /* ============================================================
+       VARIÁVEIS DE ESTADO
+    ============================================================ */
+    let reconhecedor  = null;   // instância do SpeechRecognizer
+    let textoFinal    = "";     // acumula somente os resultados finais (recognized)
+    let textoParcial  = "";     // resultado em tempo real (recognizing) — não é salvo
+    let estaEscutando = false;
 
-        const startBtn = document.getElementById("startBtn");
-        const stopBtn = document.getElementById("stopBtn");
-        const statusCircle = document.getElementById("statusCircle");
-        const statusText = document.getElementById("statusText");
-        const output = document.getElementById("output");
+    /* ── Referências a elementos do DOM ─────────────────────── */
+    const textarea      = document.getElementById("textoReconhecido");
+    const statusDot     = document.getElementById("statusDot");
+    const statusTexto   = document.getElementById("statusTexto");
+    const statusWrapper = document.getElementById("statusWrapper");
+    const btnIniciar    = document.getElementById("btnIniciar");
+    const btnParar      = document.getElementById("btnParar");
+    const charCount     = document.getElementById("charCount");
+    const alertaErro    = document.getElementById("alertaErro");
 
-        /* ================================
-           FUNÇÃO PARA ATUALIZAR TEXTAREA
-           Mostra: textoFinal + textoParcial
-           ================================= */
-        function atualizarTexto() {
-            output.value = textoFinal + textoParcial;
+    /* ============================================================
+       FUNÇÕES AUXILIARES DE UI
+    ============================================================ */
+
+    /** Atualiza o contador de caracteres no canto do textarea */
+    function atualizarContador(texto) {
+      charCount.textContent = texto.length + " chars";
+    }
+
+    /** Exibe a combinação de texto final + parcial no textarea */
+    function renderizarTexto() {
+      const exibir = textoFinal
+        + (textoParcial ? "\n[…] " + textoParcial : "");
+      textarea.value = exibir;
+      atualizarContador(exibir);
+      textarea.scrollTop = textarea.scrollHeight; // rolar para o final
+    }
+
+    /** Ativa o visual de "escutando" */
+    function ativarStatusEscutando() {
+      statusDot.classList.add("listening");
+      statusTexto.classList.add("listening");
+      statusWrapper.classList.add("listening");
+      statusTexto.textContent = "Escutando...";
+      textarea.classList.add("listening-active");
+    }
+
+    /** Restaura o visual de "parado" */
+    function restaurarStatusParado() {
+      statusDot.classList.remove("listening");
+      statusTexto.classList.remove("listening");
+      statusWrapper.classList.remove("listening");
+      statusTexto.textContent = "Parado";
+      textarea.classList.remove("listening-active");
+    }
+
+    /** Exibe uma mensagem de erro em destaque */
+    function mostrarErro(msg) {
+      alertaErro.textContent = msg;
+      alertaErro.style.display = "block";
+    }
+
+    /** Esconde o alerta de erro */
+    function ocultarErro() {
+      alertaErro.style.display = "none";
+      alertaErro.textContent   = "";
+    }
+
+    /** Limpa o conteúdo do textarea e redefine variáveis de texto */
+    function limparTexto() {
+      textoFinal   = "";
+      textoParcial = "";
+      renderizarTexto();
+    }
+
+    /* ============================================================
+       INICIAR RECONHECIMENTO
+    ============================================================ */
+    function iniciarReconhecimento() {
+      ocultarErro();
+
+      /* ── Obtém chave e região (interface ou variável hard-coded) */
+      const chave  = document.getElementById("inputKey").value.trim()
+                     || SUBSCRIPTION_KEY_PADRAO;
+      const regiao = document.getElementById("inputRegion").value.trim()
+                     || SERVICE_REGION_PADRAO;
+
+      if (!chave || !regiao) {
+        mostrarErro("⚠️ Preencha a Subscription Key e a Região antes de iniciar.");
+        return;
+      }
+
+      /* ── Limpa o texto ao começar nova sessão ─────────────── */
+      limparTexto();
+
+      /* ══════════════════════════════════════════════════════════
+         CONFIGURAÇÃO DO AZURE SPEECH SERVICE
+         SpeechConfig recebe a chave de assinatura e a região do
+         recurso criado no portal Azure.
+      ══════════════════════════════════════════════════════════ */
+      const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(chave, regiao);
+
+      /* Define o idioma de reconhecimento como Português do Brasil */
+      speechConfig.speechRecognitionLanguage = "pt-BR";
+
+      /* AudioConfig usa o microfone padrão do dispositivo */
+      const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+
+      /* Cria o reconhecedor contínuo */
+      reconhecedor = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+      /* ══════════════════════════════════════════════════════════
+         EVENTO: recognizing
+         Disparado continuamente enquanto o usuário fala.
+         Fornece resultados PARCIAIS (não definitivos).
+         Usamos para dar feedback em tempo real, mas NÃO
+         salvamos este texto no textoFinal.
+      ══════════════════════════════════════════════════════════ */
+      reconhecedor.recognizing = (sender, evento) => {
+        textoParcial = evento.result.text;   // armazena temporariamente
+        renderizarTexto();                   // exibe final + parcial
+      };
+
+      /* ══════════════════════════════════════════════════════════
+         EVENTO: recognized
+         Disparado quando o serviço finaliza um trecho de fala.
+         Este é o resultado DEFINITIVO — acumulamos em textoFinal.
+         Zeramos o textoParcial para evitar duplicação.
+      ══════════════════════════════════════════════════════════ */
+      reconhecedor.recognized = (sender, evento) => {
+        if (
+          evento.result.reason === SpeechSDK.ResultReason.RecognizedSpeech &&
+          evento.result.text.trim() !== ""
+        ) {
+          /* Acumula o texto final com espaço de separação */
+          textoFinal  += (textoFinal ? " " : "") + evento.result.text.trim();
+          textoParcial = "";     // limpa o parcial — já está salvo no final
+          renderizarTexto();
         }
+      };
 
-        /* ================================
-           CONTROLE DE STATUS VISUAL
-           ================================= */
-        function setStatusListening() {
-            statusCircle.classList.add("status-listening");
-            statusText.textContent = "Escutando...";
+      /* ── Tratamento de erros durante o reconhecimento ─────── */
+      reconhecedor.canceled = (sender, evento) => {
+        const motivo = evento.reason === SpeechSDK.CancellationReason.Error
+          ? `Erro: ${evento.errorDetails}`
+          : "Reconhecimento cancelado.";
+        mostrarErro("❌ " + motivo);
+        pararReconhecimento();
+      };
+
+      /* ── Sessão encerrada pelo serviço ────────────────────── */
+      reconhecedor.sessionStopped = () => {
+        restaurarStatusParado();
+        estaEscutando = false;
+      };
+
+      /* ══════════════════════════════════════════════════════════
+         INICIA O RECONHECIMENTO CONTÍNUO
+         startContinuousRecognitionAsync mantém o microfone aberto
+         até que pararReconhecimento() seja chamado explicitamente.
+      ══════════════════════════════════════════════════════════ */
+      reconhecedor.startContinuousRecognitionAsync(
+        () => {
+          /* Sucesso ao iniciar — atualiza a interface */
+          estaEscutando = true;
+          ativarStatusEscutando();
+          btnIniciar.disabled = true;
+          btnParar.disabled   = false;
+        },
+        (erro) => {
+          mostrarErro("❌ Não foi possível iniciar o reconhecimento: " + erro);
         }
+      );
+    }
 
-        function setStatusStopped() {
-            statusCircle.classList.remove("status-listening");
-            statusText.textContent = "Parado";
+    /* ============================================================
+       PARAR RECONHECIMENTO
+    ============================================================ */
+    function pararReconhecimento() {
+      if (!reconhecedor) return;
+
+      /* ══════════════════════════════════════════════════════════
+         CONTROLE DE STATUS — PARADA
+         stopContinuousRecognitionAsync encerra o stream de áudio
+         e libera os recursos do microfone.
+      ══════════════════════════════════════════════════════════ */
+      reconhecedor.stopContinuousRecognitionAsync(
+        () => {
+          /* Sucesso ao parar — restaura interface */
+          estaEscutando       = false;
+          textoParcial        = "";    // descarta qualquer parcial pendente
+          renderizarTexto();
+          restaurarStatusParado();
+          btnIniciar.disabled = false;
+          btnParar.disabled   = true;
+          reconhecedor.close();
+          reconhecedor = null;
+        },
+        (erro) => {
+          mostrarErro("⚠️ Erro ao parar o reconhecimento: " + erro);
         }
+      );
+    }
 
-        /* ================================
-           INICIAR RECONHECIMENTO
-           ================================= */
-        startBtn.addEventListener("click", () => {
-
-            // Limpa textos para nova sessão
-            textoFinal = "";
-            textoParcial = "";
-            atualizarTexto();
-
-            // Configuração do serviço
-            const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(subscriptionKey, serviceRegion);
-            speechConfig.speechRecognitionLanguage = "pt-BR";
-
-            const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-
-            recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
-
-            /* ================================
-               EVENTO recognizing
-               Texto parcial (tempo real)
-               NÃO deve ser salvo permanentemente
-               ================================= */
-            recognizer.recognizing = (s, e) => {
-                textoParcial = e.result.text;
-                atualizarTexto();
-            };
-
-            /* ================================
-               EVENTO recognized
-               Texto final reconhecido
-               Deve ser acumulado
-               ================================= */
-            recognizer.recognized = (s, e) => {
-                if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
-                    textoFinal += e.result.text + " ";
-                    textoParcial = "";
-                    atualizarTexto();
-                }
-            };
-
-            /* ================================
-               INICIAR RECONHECIMENTO CONTÍNUO
-               ================================= */
-            recognizer.startContinuousRecognitionAsync();
-
-            // Atualizar interface
-            setStatusListening();
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
-        });
-
-        /* ================================
-           PARAR RECONHECIMENTO
-           ================================= */
-        stopBtn.addEventListener("click", () => {
-
-            if (recognizer) {
-                recognizer.stopContinuousRecognitionAsync(() => {
-                    recognizer.close();
-                    recognizer = undefined;
-                });
-            }
-
-            setStatusStopped();
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-        });
-
-    </script>
-
+    /* ============================================================
+       INICIALIZAÇÃO — preenche campos com valores padrão se houver
+    ============================================================ */
+    window.addEventListener("DOMContentLoaded", () => {
+      if (SUBSCRIPTION_KEY_PADRAO)
+        document.getElementById("inputKey").value = SUBSCRIPTION_KEY_PADRAO;
+      if (SERVICE_REGION_PADRAO)
+        document.getElementById("inputRegion").value = SERVICE_REGION_PADRAO;
+    });
+  </script>
 </body>
-
 </html>

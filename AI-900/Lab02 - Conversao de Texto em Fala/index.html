@@ -1,199 +1,635 @@
 <!DOCTYPE html>
-<html lang="pt-br">
-
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azure Text to Speech</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Azure Text-to-Speech</title>
 
-    <!-- Bootstrap 5 CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap 5 via CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
 
-    <!-- Azure Speech SDK -->
-    <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+  <!-- Google Fonts: Syne (display) + DM Sans (body) -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 
-    <style>
-        body {
-            background-color: #f1f3f5;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+  <!-- Azure Cognitive Services Speech SDK via CDN oficial -->
+  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
 
-        .card {
-            border-radius: 15px;
-        }
+  <style>
+    /* ── Variáveis de tema ────────────────────────────── */
+    :root {
+      --bg:        #0b0e14;
+      --surface:   #12161f;
+      --card:      #181d28;
+      --border:    #252c3d;
+      --accent:    #00d4ff;
+      --accent2:   #7b5ea7;
+      --text:      #e4e9f0;
+      --muted:     #6b7590;
+      --success:   #00e5a0;
+      --warning:   #ffc857;
+      --danger:    #ff5c6c;
+      --radius:    14px;
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
 
-        textarea {
-            resize: none;
-        }
-    </style>
+    /* ── Reset / Base ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-weight: 300;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      /* Textura sutil de pontos */
+      background-image: radial-gradient(circle, #1e2535 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* ── Card principal ───────────────────────────────── */
+    .tts-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 2.75rem;
+      width: 100%;
+      max-width: 680px;
+      box-shadow:
+        0 0 0 1px rgba(0,212,255,.06),
+        0 24px 64px rgba(0,0,0,.55),
+        0 0 80px rgba(0,212,255,.04);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Linha de luz superior */
+    .tts-card::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    /* ── Header ───────────────────────────────────────── */
+    .tts-header {
+      display: flex;
+      align-items: center;
+      gap: .9rem;
+      margin-bottom: 2rem;
+    }
+
+    .tts-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(0,212,255,.18), rgba(123,94,167,.18));
+      border: 1px solid rgba(0,212,255,.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .tts-icon svg { width: 22px; height: 22px; }
+
+    .tts-title {
+      font-family: var(--font-head);
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -.5px;
+      line-height: 1.1;
+      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tts-subtitle {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: .2rem;
+      letter-spacing: .3px;
+    }
+
+    /* ── Seção de configuração (chave Azure) ──────────── */
+    .config-section {
+      background: rgba(255,200,87,.04);
+      border: 1px solid rgba(255,200,87,.18);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.75rem;
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+    }
+
+    .config-section svg { flex-shrink: 0; margin-top: 2px; }
+
+    .config-label {
+      font-size: .75rem;
+      color: var(--warning);
+      font-weight: 500;
+      letter-spacing: .3px;
+      margin-bottom: .65rem;
+    }
+
+    .config-row {
+      display: flex;
+      gap: .6rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Labels ───────────────────────────────────────── */
+    .field-label {
+      font-size: .72rem;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      margin-bottom: .45rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    .field-label span.dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    /* ── Inputs / Textarea / Select ───────────────────── */
+    .tts-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: .9rem;
+      font-weight: 300;
+      padding: .65rem .9rem;
+      width: 100%;
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+
+    .tts-input:focus {
+      border-color: rgba(0,212,255,.5);
+      box-shadow: 0 0 0 3px rgba(0,212,255,.08);
+      background: #141820;
+    }
+
+    .tts-input::placeholder { color: var(--muted); }
+
+    textarea.tts-input {
+      resize: vertical;
+      min-height: 140px;
+      line-height: 1.6;
+    }
+
+    select.tts-input { cursor: pointer; }
+    select.tts-input option { background: var(--surface); }
+
+    /* ── Botões ───────────────────────────────────────── */
+    .btn-generate {
+      background: linear-gradient(135deg, var(--accent), #0099cc);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-family: var(--font-head);
+      font-size: .9rem;
+      font-weight: 700;
+      letter-spacing: .3px;
+      padding: .75rem 1.5rem;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s, box-shadow .2s;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      box-shadow: 0 4px 20px rgba(0,212,255,.25);
+    }
+
+    .btn-generate:hover:not(:disabled) {
+      opacity: .9;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(0,212,255,.35);
+    }
+
+    .btn-generate:active:not(:disabled) { transform: translateY(0); }
+
+    .btn-download {
+      background: linear-gradient(135deg, var(--success), #00b37a);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-family: var(--font-head);
+      font-size: .9rem;
+      font-weight: 700;
+      letter-spacing: .3px;
+      padding: .75rem 1.5rem;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s, box-shadow .2s;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      box-shadow: 0 4px 20px rgba(0,229,160,.2);
+    }
+
+    .btn-download:hover:not(:disabled) {
+      opacity: .9;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(0,229,160,.3);
+    }
+
+    .btn-download:disabled {
+      opacity: .3;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── Barra de status ──────────────────────────────── */
+    .status-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .7rem 1rem;
+      font-size: .82rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      min-height: 44px;
+      transition: border-color .3s;
+    }
+
+    .status-bar.status-loading { border-color: rgba(0,212,255,.4); }
+    .status-bar.status-success { border-color: rgba(0,229,160,.4); }
+    .status-bar.status-error   { border-color: rgba(255,92,108,.4); }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+
+    .status-loading .status-dot { background: var(--accent); animation: pulse 1s infinite; }
+    .status-success .status-dot { background: var(--success); }
+    .status-error   .status-dot { background: var(--danger); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .4; transform: scale(.7); }
+    }
+
+    /* ── Player de áudio ──────────────────────────────── */
+    #audioPlayer {
+      width: 100%;
+      border-radius: 10px;
+      outline: none;
+      /* Estilização do player nativo */
+      filter: invert(1) hue-rotate(180deg) brightness(.85);
+      margin-top: .25rem;
+    }
+
+    /* ── Divisor ──────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.6rem 0;
+    }
+
+    /* ── Responsividade ───────────────────────────────── */
+    @media (max-width: 520px) {
+      .tts-card { padding: 1.75rem 1.25rem; }
+      .config-row { flex-direction: column; }
+      .btn-row { flex-direction: column; }
+    }
+  </style>
 </head>
-
 <body>
 
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
+  <!-- ════════════════════════════════════════════════════
+       CARD PRINCIPAL
+  ════════════════════════════════════════════════════ -->
+  <div class="tts-card">
 
-                <div class="card shadow-lg">
-                    <div class="card-body">
-
-                        <h3 class="text-center mb-4">🔊 Azure Text to Speech</h3>
-
-                        <!-- Textarea -->
-                        <div class="mb-3">
-                            <label class="form-label">Digite o texto:</label>
-                            <textarea id="texto" class="form-control" rows="4"
-                                placeholder="Digite aqui o texto que será convertido em áudio..."></textarea>
-                        </div>
-
-                        <!-- Seleção de Voz -->
-                        <div class="mb-3">
-                            <label class="form-label">Selecione a voz (pt-BR):</label>
-                            <select id="vozSelect" class="form-select">
-                                <option value="pt-BR-FranciscaNeural">Francisca Neural (Feminina)</option>
-                                <option value="pt-BR-AntonioNeural">Antonio Neural (Masculina)</option>
-                                <option value="pt-BR-BrendaNeural">Brenda Neural (Feminina)</option>
-                                <option value="pt-BR-DonatoNeural">Donato Neural (Masculina)</option>
-                            </select>
-                        </div>
-
-                        <!-- Botões -->
-                        <div class="d-grid gap-2 mb-3">
-                            <button id="gerarBtn" class="btn btn-primary">
-                                Gerar Áudio
-                            </button>
-
-                            <button id="baixarBtn" class="btn btn-success" disabled>
-                                Baixar Áudio (.wav)
-                            </button>
-                        </div>
-
-                        <!-- Status -->
-                        <div class="text-center">
-                            <span id="status" class="fw-semibold text-muted">
-                                Aguardando geração...
-                            </span>
-                        </div>
-
-                    </div>
-                </div>
-
-            </div>
-        </div>
+    <!-- CABEÇALHO -->
+    <div class="tts-header">
+      <div class="tts-icon">
+        <!-- Ícone de onda sonora -->
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 10v4M7 7v10M11 4v16M15 7v10M19 10v4"
+                stroke="#00d4ff" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="tts-title">Azure Text-to-Speech</div>
+        <div class="tts-subtitle">Conversão de texto em voz via Azure Cognitive Services</div>
+      </div>
     </div>
 
-    <script>
-        /* ==========================================
-           CONFIGURAÇÃO DO SERVIÇO AZURE
-           ========================================== */
+    <!-- ─── SEÇÃO DE CONFIGURAÇÃO (credenciais Azure) ─── -->
+    <!--
+      ⚠️  IMPORTANTE: Insira sua Subscription Key e Região abaixo.
+          Você obtém esses dados no portal do Azure:
+          Portal → Cognitive Services / Speech → Chaves e Ponto de Extremidade
+    -->
+    <div class="config-section">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+              stroke="#ffc857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div style="flex:1">
+        <div class="config-label">⚙ Credenciais do Azure Speech Service</div>
+        <div class="config-row">
+          <!-- Campo: Subscription Key -->
+          <div style="flex:2; min-width:180px">
+            <input
+              id="subscriptionKey"
+              type="password"
+              class="tts-input"
+              placeholder="Cole sua Subscription Key aqui"
+              autocomplete="off"
+            />
+          </div>
+          <!-- Campo: Região -->
+          <div style="flex:1; min-width:120px">
+            <input
+              id="serviceRegion"
+              type="text"
+              class="tts-input"
+              placeholder="Região (ex: eastus)"
+            />
+          </div>
+        </div>
+        <div style="font-size:.7rem; color:var(--muted); margin-top:.5rem">
+          As credenciais ficam apenas no navegador e não são enviadas a nenhum servidor intermediário.
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SELEÇÃO DE VOZ ─── -->
+    <div class="mb-3">
+      <div class="field-label"><span class="dot"></span>Voz Neural (pt-BR)</div>
+      <!--
+        Vozes neurais disponíveis em português do Brasil.
+        Referência completa: https://learn.microsoft.com/azure/cognitive-services/speech-service/language-support
+      -->
+      <select id="voiceSelect" class="tts-input">
+        <optgroup label="Femininas">
+          <option value="pt-BR-FranciscaNeural">Francisca (padrão)</option>
+          <option value="pt-BR-BrendaNeural">Brenda</option>
+          <option value="pt-BR-ElzaNeural">Elza</option>
+          <option value="pt-BR-GiovannaNeural">Giovanna</option>
+          <option value="pt-BR-LeilaNeural">Leila</option>
+          <option value="pt-BR-LeticiaNeural">Letícia</option>
+          <option value="pt-BR-ManuelaNeural">Manuela</option>
+          <option value="pt-BR-YaraNeural">Yara</option>
+        </optgroup>
+        <optgroup label="Masculinas">
+          <option value="pt-BR-AntonioNeural">Antônio</option>
+          <option value="pt-BR-DonatoNeural">Donato</option>
+          <option value="pt-BR-FabioNeural">Fábio</option>
+          <option value="pt-BR-HumbertoNeural">Humberto</option>
+          <option value="pt-BR-JulioNeural">Júlio</option>
+          <option value="pt-BR-NicolauNeural">Nicolau</option>
+          <option value="pt-BR-ValérioNeural">Valério</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <!-- ─── TEXTO DE ENTRADA ─── -->
+    <div class="mb-3">
+      <div class="field-label"><span class="dot"></span>Texto para converter</div>
+      <textarea
+        id="inputText"
+        class="tts-input"
+        placeholder="Digite o texto que deseja converter em áudio..."
+      >Olá! Este é um exemplo de síntese de voz usando o Azure Speech Service. A tecnologia de voz neural oferece uma experiência de áudio natural e fluida.</textarea>
+    </div>
+
+    <hr class="divider"/>
+
+    <!-- ─── BOTÕES DE AÇÃO ─── -->
+    <div class="d-flex gap-2 flex-wrap btn-row mb-3">
+
+      <!-- Botão: Gerar Áudio -->
+      <button id="btnGenerate" class="btn-generate" onclick="gerarAudio()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+        </svg>
+        Gerar Áudio
+      </button>
+
+      <!-- Botão: Baixar Áudio — desabilitado inicialmente -->
+      <button id="btnDownload" class="btn-download" onclick="baixarAudio()" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"
+                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Baixar Áudio (.wav)
+      </button>
+
+    </div>
+
+    <!-- ─── BARRA DE STATUS ─── -->
+    <div id="statusBar" class="status-bar mb-3">
+      <div id="statusDot" class="status-dot"></div>
+      <span id="statusText" style="color:var(--muted)">Aguardando geração de áudio…</span>
+    </div>
+
+    <!-- ─── PLAYER DE ÁUDIO ─── -->
+    <!--
+      O player fica oculto até que o áudio seja gerado.
+      O src é preenchido dinamicamente via Object URL (Blob).
+    -->
+    <audio id="audioPlayer" controls style="display:none"></audio>
+
+  </div><!-- /tts-card -->
 
 
-        // 🔑 INSIRA AQUI SUA CHAVE DO AZURE
-        const subscriptionKey = "SUA_CHAVE_AQUI";
+  <!-- Bootstrap 5 JS (necessário para componentes interativos) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-        // 🌎 INSIRA AQUI SUA REGIÃO DO AZURE (ex: brazilsouth, eastus, westus)
-        const serviceRegion = "SUA_REGIAO_AQUI";
+  <script>
+    // ══════════════════════════════════════════════════════════════
+    //  VARIÁVEIS GLOBAIS
+    //  audioBlob: armazena o áudio gerado em memória para download
+    // ══════════════════════════════════════════════════════════════
+    let audioBlob = null;
 
-        let audioBlob = null;
+    // ──────────────────────────────────────────────────────────────
+    //  FUNÇÃO: atualizarStatus
+    //  Atualiza a barra de status com mensagem e estilo visual.
+    //  tipo: 'idle' | 'loading' | 'success' | 'error'
+    // ──────────────────────────────────────────────────────────────
+    function atualizarStatus(mensagem, tipo = 'idle') {
+      const bar  = document.getElementById('statusBar');
+      const dot  = document.getElementById('statusDot');
+      const text = document.getElementById('statusText');
 
-        /* ==========================================
-           ELEMENTOS DA INTERFACE
-           ========================================== */
+      // Remove classes anteriores
+      bar.classList.remove('status-loading', 'status-success', 'status-error');
 
-        const textoInput = document.getElementById("texto");
-        const vozSelect = document.getElementById("vozSelect");
-        const gerarBtn = document.getElementById("gerarBtn");
-        const baixarBtn = document.getElementById("baixarBtn");
-        const statusSpan = document.getElementById("status");
+      // Aplica classe conforme o tipo
+      if (tipo !== 'idle') bar.classList.add('status-' + tipo);
 
-        /* ==========================================
-           FUNÇÃO PRINCIPAL - GERAR ÁUDIO
-           ========================================== */
+      // Define cor do texto de acordo com o estado
+      const cores = {
+        idle:    'var(--muted)',
+        loading: 'var(--accent)',
+        success: 'var(--success)',
+        error:   'var(--danger)'
+      };
 
-        gerarBtn.addEventListener("click", () => {
+      text.style.color = cores[tipo] || cores.idle;
+      text.textContent = mensagem;
+    }
 
-            const texto = textoInput.value.trim();
+    // ──────────────────────────────────────────────────────────────
+    //  FUNÇÃO PRINCIPAL: gerarAudio
+    //  Lê o texto e a voz selecionada, chama o Azure Speech SDK,
+    //  armazena o resultado como Blob e reproduz automaticamente.
+    // ──────────────────────────────────────────────────────────────
+    async function gerarAudio() {
 
-            if (!texto) {
-                alert("Digite um texto antes de gerar o áudio.");
-                return;
+      // 1. Coleta as credenciais inseridas pelo usuário
+      const subscriptionKey = document.getElementById('subscriptionKey').value.trim();
+      const serviceRegion   = document.getElementById('serviceRegion').value.trim();
+
+      // Validação básica das credenciais
+      if (!subscriptionKey || !serviceRegion) {
+        atualizarStatus('❌ Preencha a Subscription Key e a Região antes de continuar.', 'error');
+        return;
+      }
+
+      // 2. Coleta o texto e a voz selecionada
+      const texto = document.getElementById('inputText').value.trim();
+      const voz   = document.getElementById('voiceSelect').value;
+
+      if (!texto) {
+        atualizarStatus('❌ Digite um texto para converter.', 'error');
+        return;
+      }
+
+      // 3. Bloqueia o botão durante o processamento
+      const btnGenerate = document.getElementById('btnGenerate');
+      btnGenerate.disabled = true;
+      atualizarStatus('⏳ Conectando ao Azure Speech Service…', 'loading');
+
+      try {
+        // ── 4. Configuração do Azure Speech SDK ──────────────────
+        //  SpeechConfig: autentica e define o idioma de saída
+        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(subscriptionKey, serviceRegion);
+        speechConfig.speechSynthesisLanguage = 'pt-BR';
+
+        // Define a voz selecionada dinamicamente
+        speechConfig.speechSynthesisVoiceName = voz;
+
+        // ── 5. Saída em memória (ArrayBuffer) ─────────────────────
+        //  AudioConfig.fromDefaultSpeakerOutput() reproduziria direto no speaker.
+        //  Usamos fromStreamOutput para capturar o áudio em memória,
+        //  possibilitando o download posterior.
+        const audioOutputStream = SpeechSDK.AudioOutputStream.createPullStream();
+        const audioConfig        = SpeechSDK.AudioConfig.fromStreamOutput(audioOutputStream);
+
+        // ── 6. Criação do sintetizador ────────────────────────────
+        const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, audioConfig);
+
+        atualizarStatus('🎙️ Gerando áudio com a voz ' + voz + '…', 'loading');
+
+        // ── 7. Síntese de fala (retorna Promise) ──────────────────
+        //  speakTextAsync: converte texto simples (SSML é suportado via speakSsmlAsync)
+        const resultado = await new Promise((resolve, reject) => {
+          synthesizer.speakTextAsync(
+            texto,
+            result => {
+              synthesizer.close(); // libera recursos
+              resolve(result);
+            },
+            error => {
+              synthesizer.close();
+              reject(error);
             }
-
-            statusSpan.textContent = "Gerando áudio...";
-            baixarBtn.disabled = true;
-
-            // Configuração do Speech Service
-            const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(subscriptionKey, serviceRegion);
-
-            // Permite alterar dinamicamente a voz selecionada
-            speechConfig.speechSynthesisVoiceName = vozSelect.value;
-
-            // Configura saída em formato WAV
-            speechConfig.speechSynthesisOutputFormat =
-                SpeechSDK.SpeechSynthesisOutputFormat.Riff16Khz16BitMonoPcm;
-
-            // Cria sintetizador SEM saída automática (usaremos ArrayBuffer)
-            const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, null);
-
-            /* ==========================================
-               SÍNTESE DE TEXTO PARA ÁUDIO
-               O áudio será retornado como ArrayBuffer
-               ========================================== */
-
-            synthesizer.speakTextAsync(
-                texto,
-                result => {
-
-                    if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
-
-                        // Converte ArrayBuffer em Blob WAV
-                        const audioData = result.audioData;
-                        audioBlob = new Blob([audioData], { type: "audio/wav" });
-
-                        // Cria URL temporária
-                        const audioUrl = URL.createObjectURL(audioBlob);
-
-                        // Reproduz automaticamente
-                        const audio = new Audio(audioUrl);
-                        audio.play();
-
-                        statusSpan.textContent = "Áudio gerado com sucesso!";
-                        baixarBtn.disabled = false;
-                    }
-                    else {
-                        statusSpan.textContent = "Erro ao gerar áudio.";
-                    }
-
-                    synthesizer.close();
-                },
-                error => {
-                    console.error(error);
-                    statusSpan.textContent = "Erro na síntese.";
-                    synthesizer.close();
-                }
-            );
+          );
         });
 
-        /* ==========================================
-           FUNÇÃO SEPARADA PARA DOWNLOAD
-           ========================================== */
-
-        baixarBtn.addEventListener("click", downloadAudio);
-
-        function downloadAudio() {
-
-            if (!audioBlob) return;
-
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(audioBlob);
-            link.download = "audio_azure.wav";
-            link.click();
+        // ── 8. Verifica se a síntese foi bem-sucedida ─────────────
+        if (resultado.reason !== SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+          throw new Error('Falha na síntese: ' + resultado.errorDetails);
         }
-    </script>
+
+        // ── 9. Converte ArrayBuffer para Blob do tipo audio/wav ───
+        //  resultado.audioData contém o ArrayBuffer com os bytes do áudio WAV
+        audioBlob = new Blob([resultado.audioData], { type: 'audio/wav' });
+
+        // ── 10. Cria um Object URL temporário para reprodução ─────
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        // ── 11. Injeta o URL no player e exibe ────────────────────
+        const player = document.getElementById('audioPlayer');
+        player.src   = audioUrl;
+        player.style.display = 'block';
+
+        // ── 12. Reprodução automática ─────────────────────────────
+        await player.play().catch(() => {
+          // Navegadores podem bloquear autoplay sem interação do usuário
+          atualizarStatus('✅ Áudio gerado! Clique no player para ouvir.', 'success');
+        });
+
+        // ── 13. Habilita o botão de download ──────────────────────
+        document.getElementById('btnDownload').disabled = false;
+
+        atualizarStatus('✅ Áudio gerado com sucesso! Use o player abaixo ou baixe o arquivo.', 'success');
+
+      } catch (erro) {
+        // Trata erros de autenticação, rede ou síntese
+        console.error('[Azure TTS] Erro:', erro);
+        atualizarStatus('❌ Erro ao gerar áudio: ' + (erro.message || erro), 'error');
+      } finally {
+        // Reabilita o botão ao finalizar (com ou sem erro)
+        btnGenerate.disabled = false;
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  FUNÇÃO: baixarAudio
+    //  Cria um link temporário de download a partir do Blob gerado
+    //  e aciona o download do arquivo .wav no navegador.
+    // ──────────────────────────────────────────────────────────────
+    function baixarAudio() {
+      if (!audioBlob) {
+        atualizarStatus('⚠️ Gere o áudio primeiro.', 'error');
+        return;
+      }
+
+      // Cria URL de objeto para o Blob
+      const url = URL.createObjectURL(audioBlob);
+
+      // Cria elemento <a> invisível e simula um clique para download
+      const link    = document.createElement('a');
+      link.href     = url;
+      link.download = 'audio_azure_tts.wav'; // nome do arquivo baixado
+      document.body.appendChild(link);
+      link.click();
+
+      // Remove o elemento e revoga o Object URL para liberar memória
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      atualizarStatus('⬇️ Download iniciado: audio_azure_tts.wav', 'success');
+    }
+  </script>
 
 </body>
-
 </html>
